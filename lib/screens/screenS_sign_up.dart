@@ -145,7 +145,7 @@ class ScreensSignUp extends StatelessWidget {
               ),
               Obx(() {
                 return CustomButton(
-                  buttonColor: AppColors.appColor,
+                  buttonColor: AppColors.buttonColor,
                   isLoading: controllerRegister.isLoading.value,
                   buttonText: 'Sign up',
                   onTap: () {

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_database/ui/firebase_animated_list.dart';
-import 'package:flutter_practices/screens/screen_firestore.dart';
+import 'package:flutter_practices/controllers/controller_register.dart';
+import 'package:flutter_practices/screens/screen_live_location.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import '../constants/colors.dart';
@@ -26,7 +27,7 @@ class _ScreenShowDatabaseDataState extends State<ScreenShowDatabaseData> {
         child: Icon(Icons.add),
         onPressed: () {
           Get.to(ScreenAddInformation(
-            dataId: null, // No dataId when adding new data
+            dataId: null,
             editData: false,
           ));
         },
@@ -46,6 +47,15 @@ class _ScreenShowDatabaseDataState extends State<ScreenShowDatabaseData> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: [
+          TextButton(onPressed: (){
+            Get.find<ControllerRegister>().logout();
+          }, child: Text("Logout", style: TextStyle(
+            color: Colors.red,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),))
+        ],
       ),
       body: Container(
         height: MediaQuery.sizeOf(context).height,
@@ -110,6 +120,11 @@ class _ScreenShowDatabaseDataState extends State<ScreenShowDatabaseData> {
                         color: Colors.green,
                       ),
                     );
+                  }
+                  if(snapshot.data == null){
+                    Center(child: Text("No data found", style: TextStyle(
+                      color: Colors.white,
+                    ),));
                   }
                   print(snapshot.data!.snapshot.value);
                   return FirebaseAnimatedList(

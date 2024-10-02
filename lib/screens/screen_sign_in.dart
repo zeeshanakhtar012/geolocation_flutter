@@ -160,7 +160,7 @@ class ScreenLogin extends StatelessWidget {
               ),
               Obx(() {
                 return CustomButton(
-                  buttonColor: AppColors.appColor,
+                  buttonColor: AppColors.buttonColor,
                   isLoading: controllerRegister.isLoading.value,
                   buttonText: 'Login',
                   onTap: () {
@@ -182,4 +182,5 @@ class ScreenLogin extends StatelessWidget {
       ),
     );
   }
+
 }

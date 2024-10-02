@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -6,7 +5,7 @@ class CustomButton extends StatelessWidget {
   final String buttonText;
   final VoidCallback onTap;
   final bool isLoading;
-  final LinearGradient? buttonColor;
+  final Color? buttonColor;
 
   CustomButton({
     required this.buttonText,
@@ -23,7 +22,7 @@ class CustomButton extends StatelessWidget {
         height: 45.h,
         width: MediaQuery.sizeOf(context).width,
         decoration: BoxDecoration(
-          gradient: buttonColor, // Fallback color
+          color: buttonColor,
           borderRadius: BorderRadius.circular(8.r),
         ),
         alignment: Alignment.center,
