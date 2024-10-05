@@ -1,40 +1,47 @@
 import 'dart:developer';
 import 'dart:io';
-import 'package:firebase_database/firebase_database.dart';
+
+import 'package:Jazz/controllers/controller_add_data.dart';
+import 'package:Jazz/screens/screen_live_location.dart';
+import 'package:Jazz/widgets/my_input_feild.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_practices/constants/colors.dart';
-import 'package:flutter_practices/controllers/controller_posting_data.dart';
-import 'package:flutter_practices/screens/screen_show_database_data.dart';
-import 'package:flutter_practices/widgets/custom_button.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:intl/intl.dart';
 
+import '../constants/colors.dart';
+import '../widgets/custom_button.dart';
 import '../widgets/custom_image_picker_container.dart';
 
 class ScreenAddInformation extends StatefulWidget {
-  final bool editData;
-  final String? dataId;
-
-  ScreenAddInformation({required this.editData, this.dataId, super.key});
+  bool? isIntelligence;
+  bool? isVisit;
+  bool? isAssetDeploy;
+  bool? isTradeAssets;
 
   @override
   State<ScreenAddInformation> createState() => _ScreenAddInformationState();
+
+  ScreenAddInformation({
+    this.isIntelligence,
+    this.isVisit,
+    this.isAssetDeploy,
+    this.isTradeAssets,
+  });
 }
 
 class _ScreenAddInformationState extends State<ScreenAddInformation> {
+  ControllerAuthentication controller = Get.put(ControllerAuthentication());
   late GoogleMapController mapController;
+  bool isPresent = false;
 
-  // Set the initial position of the map
   final LatLng _initialPosition = LatLng(37.7749, -122.4194); // San Francisco
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
   }
 
-  ControllerFirebasePosting controllerFirebasePosting =
-      Get.put(ControllerFirebasePosting());
   final List<String> assetsCamp = [
     'Jazz',
     'Zong',
@@ -48,15 +55,14 @@ class _ScreenAddInformationState extends State<ScreenAddInformation> {
   void _onSelected(String value) {
     setState(() {
       _selectedItem = value;
-      controllerFirebasePosting.assetCamp.value;
+      controller.selectedAsset.value;
     });
   }
 
   void _onImagePicked(String imagePath) {
     setState(() {
-      imagePaths.add(imagePath); // Add image paths to the list for display
-      controllerFirebasePosting.selectedImages
-          .add(File(imagePath)); // Add the image file to the controller
+      imagePaths.add(imagePath);
+      controller.images.length > 0 ? controller.images.add(imagePath) : null;
     });
   }
 
@@ -69,19 +75,40 @@ class _ScreenAddInformationState extends State<ScreenAddInformation> {
     "BTL activity",
     "Dedicated shop"
   ];
+  final List<String> title = [
+    'Jazz Trade Intelligence',
+    'Visit Log',
+    'Asset Deployment',
+    "Trade Asset",
+  ];
+
+  String _getTitle() {
+    if (widget.isIntelligence == true) {
+      return title[0];
+    } else if (widget.isVisit == true) {
+      return title[1];
+    } else if (widget.isAssetDeploy == true) {
+      return title[2];
+    } else if (widget.isTradeAssets == true) {
+      return title[3];
+    } else {
+      return "Add Data";
+    }
+  }
+
   String? _selectedDetails;
 
   void _onSelectedRetailer(String value) {
     setState(() {
       _selectedDetails = value;
-      controllerFirebasePosting.retailerDetails.value;
+      controller.selectedRetailerDetail.value;
     });
   }
 
   @override
   void initState() {
     super.initState();
-    controllerFirebasePosting.addData();
+    controller.saveData(controller.lat.value, controller.lng.value);
   }
 
   Future<void> _initializeMap() async {
@@ -90,8 +117,6 @@ class _ScreenAddInformationState extends State<ScreenAddInformation> {
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.sizeOf(context).width;
-    final width = MediaQuery.sizeOf(context).height;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -103,101 +128,71 @@ class _ScreenAddInformationState extends State<ScreenAddInformation> {
               color: Colors.white,
             )),
         title: Text(
-          widget.editData ? "Update Information" : "Add Information",
+          _getTitle(),
           style: TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 16.sp,
               fontWeight: FontWeight.w600),
         ),
       ),
-      body: Container(
-        height: height.sh,
-        width: width.sw,
-        decoration: BoxDecoration(
-          gradient: AppColors.appBackgroundColor,
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                  height: 299.h,
-                  width: 375.w,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(20)
-                  ),
-                  child: Center(
-                      child: Text(
-                    "Google Map Live",
-                    style: TextStyle(
-                      color: Colors.white,
-                    ),
-                  ))),
-              SizedBox(height: 10.h),
-              Container(
-                alignment: Alignment.center,
-                height: 50.h,
-                width: width,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.r),
-                  color: Color(0xFF190733),
-                ),
-                child: Center(
-                  child: TextFormField(
-                    controller: controllerFirebasePosting.posId.value,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp,
-                    ),
-                    decoration: InputDecoration(
-                      prefixIcon: Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 30.sp,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(vertical: 15.h),
-                      // Adjust this as needed
-                      border: InputBorder.none,
-                      hintStyle: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14.sp,
-                      ),
-                      hintText:
-                          controllerFirebasePosting.posId.value.text.isNotEmpty
-                              ? controllerFirebasePosting.posId.value.text
-                              : "POSID",
-                    ),
-                  ),
-                ),
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Location:",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w500,
               ),
-              SizedBox(height: 10.h),
-              Container(
-                alignment: Alignment.center,
-                height: 50.h,
-                width: width,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.r),
-                  color: Color(0xFF190733),
-                ),
-                child: TextFormField(
-                  readOnly: true,
-                  controller: controllerFirebasePosting.assetCamp.value,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(
-                      Icons.grading,
-                      color: Colors.white,
-                      size: 30.sp,
+            ).marginOnly(
+              bottom: 5.h,
+            ),
+            // Container(
+            //   height: 299.h,
+            //   width: 375.w,
+            //   decoration: BoxDecoration(
+            //       color: Colors.red, borderRadius: BorderRadius.circular(20)),
+            //   child: GoogleMap(
+            //       zoomControlsEnabled: false,
+            //       myLocationEnabled: true,
+            //       initialCameraPosition:
+            //       CameraPosition(target: _initialPosition),
+            //       onMapCreated: _onMapCreated),
+            // ),
+            SizedBox(height: 10.h),
+            //asset type
+            if (widget.isIntelligence == true)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Type of Asset",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
                     ),
-                    suffixIcon: PopupMenuButton<String>(
+                  ).marginOnly(
+                    bottom: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.selectedAsset.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    readOnly: true,
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: _selectedItem ?? "Type Asset",
+                    suffix: PopupMenuButton<String>(
                       icon: Icon(
                         Icons.keyboard_arrow_down_sharp,
                         color: Colors.white,
@@ -212,35 +207,33 @@ class _ScreenAddInformationState extends State<ScreenAddInformation> {
                         }).toList();
                       },
                     ),
-                    contentPadding: EdgeInsets.symmetric(vertical: 15.h),
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp,
+                  ),
+                  SizedBox(height: 10.h),
+                  // retailer details pop up
+                  Text(
+                    "Asset Camping",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
                     ),
-                    hintText: _selectedItem ?? "Asset Camping",
+                  ).marginOnly(
+                    bottom: 5.h,
                   ),
-                ),
-              ),
-              SizedBox(height: 10.h),
-              Container(
-                alignment: Alignment.center,
-                height: 50.h,
-                width: width,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.r),
-                  color: Color(0xFF190733),
-                ),
-                child: TextFormField(
-                  controller: controllerFirebasePosting.retailerDetails.value,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    suffixIcon: PopupMenuButton<String>(
+                  MyInputField(
+                    controller: controller.assetCamp.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    readOnly: true,
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: _selectedDetails ?? "Asset Camping",
+                    suffix: PopupMenuButton<String>(
                       icon: Icon(
                         Icons.keyboard_arrow_down_sharp,
                         color: Colors.white,
@@ -255,183 +248,388 @@ class _ScreenAddInformationState extends State<ScreenAddInformation> {
                         }).toList();
                       },
                     ),
-                    contentPadding: EdgeInsets.symmetric(vertical: 15.h),
-                    // Adjust this as needed
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.details,
-                      color: Colors.white,
-                    ),
-                    hintText: _selectedDetails ?? "Retailer Details",
-                  ),
-                ),
-              ),
-              SizedBox(height: 10.h),
-              Container(
-                alignment: Alignment.center,
-                height: 50.h,
-                width: width,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.r),
-                  color: Color(0xFF190733),
-                ),
-                child: TextFormField(
-                  controller: controllerFirebasePosting.retailerName.value,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(vertical: 15.h),
-                    // Adjust this as needed
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.drive_file_rename_outline,
-                      color: Colors.white,
-                    ),
-                    hintText: "Retailer Name",
-                  ),
-                ),
-              ),
-              SizedBox(height: 10.h),
-              Container(
-                alignment: Alignment.center,
-                height: 50.h,
-                width: width,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.r),
-                  color: Color(0xFF190733),
-                ),
-                child: TextFormField(
-                  controller: controllerFirebasePosting.posId.value,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(vertical: 15.h),
-                    // Adjust this as needed
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.post_add,
-                      color: Colors.white,
-                    ),
-                    hintText: "POSID",
-                  ),
-                ),
-              ),
-              SizedBox(height: 10.h),
-              Container(
-                alignment: Alignment.center,
-                height: 50.h,
-                width: width,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.r),
-                  color: Color(0xFF190733),
-                ),
-                child: TextFormField(
-                  controller: controllerFirebasePosting.franchiseId.value,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14.sp,
-                  ),
-                  decoration: InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(vertical: 15.h),
-                    // Adjust this as needed
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14.sp,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.insert_drive_file_outlined,
-                      color: Colors.white,
-                    ),
-                    hintText: "Franchise Id",
-                  ),
-                ),
-              ),
-              SizedBox(height: 10.h),
-              Row(
-                children: [
-                  CustomImagePickerContainer(
-                    onImagePicked: _onImagePicked,
-                  ),
-                  SizedBox(
-                    width: 10.w,
-                  ),
-                  CustomImagePickerContainer(
-                    onImagePicked: _onImagePicked,
-                  ),
-                  SizedBox(
-                    width: 10.w,
-                  ),
-                  CustomImagePickerContainer(
-                    onImagePicked: _onImagePicked,
                   ),
                 ],
               ),
-              SizedBox(
-                height: 10.w,
-              ),
-              Row(
+            SizedBox(height: 10.h),
+            //visit log//////////////////////////
+            if (widget.isVisit == true)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CustomImagePickerContainer(
-                    onImagePicked: _onImagePicked,
+                  Text(
+                    "POSID",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
                   ),
-                  SizedBox(
-                    width: 10.w,
+                  MyInputField(
+                    controller: controller.posId.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: "POSID",
                   ),
-                  CustomImagePickerContainer(
-                    onImagePicked: _onImagePicked,
+                  SizedBox(height: 10.h),
+                  Text(
+                    "Retailer Name",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
                   ),
-                  SizedBox(
-                    width: 10.w,
+                  MyInputField(
+                    controller: controller.retailerName.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: "Retailer Name",
                   ),
-                  CustomImagePickerContainer(
-                    onImagePicked: _onImagePicked,
+                  SizedBox(height: 10.h),
+                  Text(
+                    "Retailer Address",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.retailerAddress.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: "Retailer Address",
+                  ),
+                  SizedBox(height: 10.h),
+                ],
+              ),
+            SizedBox(height: 10.h),
+            if (widget.isAssetDeploy == true)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "POSID",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.posId.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: "POSID",
+                  ),
+                  Text(
+                    "Type of Asset",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
+                    top: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.selectedAsset.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    readOnly: true,
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: _selectedItem ?? "Type Asset",
+                    suffix: PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.keyboard_arrow_down_sharp,
+                        color: Colors.white,
+                      ),
+                      onSelected: _onSelected,
+                      itemBuilder: (BuildContext context) {
+                        return assetsCamp.map((String choice) {
+                          return PopupMenuItem<String>(
+                            value: choice,
+                            child: Text(choice),
+                          );
+                        }).toList();
+                      },
+                    ),
                   ),
                 ],
               ),
-              SizedBox(height: 10.h),
-              Obx(() {
-                return CustomButton(
-                  buttonColor: AppColors.buttonColor,
-                  isLoading: controllerFirebasePosting.isLoading.value,
-                  buttonText: widget.editData ? "Update" : "Submit",
-                  onTap: () {
-                    log("Image address ${controllerFirebasePosting.selectedImages.length}");
-                    controllerFirebasePosting.addData();
-                    // if (widget.editData && widget.dataId != null) {
-                    //   controllerFirebasePosting.updateData(widget.dataId!);
-                    // } else {
-                    //
-                    // }
+            if (widget.isTradeAssets == true)
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "POSID",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.posId.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: "POSID",
+                  ),
+                  Text(
+                    "Type of Asset",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
+                    top: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.selectedAsset.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    readOnly: true,
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: _selectedItem ?? "Type Asset",
+                    suffix: PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.keyboard_arrow_down_sharp,
+                        color: Colors.white,
+                      ),
+                      onSelected: _onSelected,
+                      itemBuilder: (BuildContext context) {
+                        return assetsCamp.map((String choice) {
+                          return PopupMenuItem<String>(
+                            value: choice,
+                            child: Text(choice),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Text(
+                    "Retailer Name",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.retailerName.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: "Retailer Name",
+                  ),
+                  SizedBox(height: 10.h),
+                  Text(
+                    "Retailer Address",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ).marginOnly(
+                    bottom: 5.h,
+                  ),
+                  MyInputField(
+                    controller: controller.retailerAddress.value,
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
+                    textStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    hint: "Retailer Address",
+                  ),
+                ],
+              ),
+            // if (widget.isTradeAssets == true &&
+            //     widget.isVisit == true &&
+            //     widget.isAssetDeploy == true)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Mark Attendance",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17.sp,
+                        )),
+                    Text("Must Enable",
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12.sp,
+                        )),
+                  ],
+                ),
+                Switch(
+                  value: controller.isPresent.value,
+                  onChanged: (bool value) {
+                    setState(() {
+                      controller.markAttendance(value);
+                    });
                   },
-                );
-              }).marginSymmetric(vertical: 8.h),
-            ],
-          ).marginSymmetric(horizontal: 10.w, vertical: 8.h),
-        ),
+                  activeColor: Colors.green,
+                  inactiveThumbColor: Colors.red,
+                  inactiveTrackColor: Colors.red[200],
+                ),
+              ],
+            ),
+            Text(
+              "Upload Pics",
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w500,
+              ),
+            ).marginOnly(
+              bottom: 5.h,
+            ),
+            Row(
+              children: [
+                CustomImagePickerContainer(
+                  onImagePicked: _onImagePicked,
+                ),
+                SizedBox(
+                  width: 10.w,
+                ),
+                CustomImagePickerContainer(
+                  onImagePicked: _onImagePicked,
+                ),
+                SizedBox(
+                  width: 10.w,
+                ),
+                CustomImagePickerContainer(
+                  onImagePicked: _onImagePicked,
+                ),
+              ],
+            ).marginOnly(
+              top: 10.h,
+            ),
+            SizedBox(
+              height: 10.w,
+            ),
+            Row(
+              children: [
+                CustomImagePickerContainer(
+                  onImagePicked: _onImagePicked,
+                ),
+                SizedBox(
+                  width: 10.w,
+                ),
+                CustomImagePickerContainer(
+                  onImagePicked: _onImagePicked,
+                ),
+                SizedBox(
+                  width: 10.w,
+                ),
+                CustomImagePickerContainer(
+                  onImagePicked: _onImagePicked,
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            Obx(() {
+              return CustomButton(
+                isLoading: controller.isLoading.value,
+                buttonColor: AppColors.buttonColor,
+                buttonText: "Upload Data",
+                onTap: () async {
+                  await controller.getLocation();
+                  for (String imagePath in controller.images) {
+                    File imageFile = File(imagePath);
+                    String downloadUrl = await controller.uploadImageToStorage(imageFile);
+                    log('Image uploaded: $downloadUrl');
+                  }
+                  await controller.saveData(controller.lat.value, controller.lng.value);
+                },
+              );
+            }).marginSymmetric(vertical: 8.h),
+          ],
+        ).marginSymmetric(horizontal: 10.w, vertical: 8.h),
       ),
     );
   }

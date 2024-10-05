@@ -2,7 +2,6 @@
 class Assets {
   Assets._();
 
-  static const String imagesIconCircle = 'assets/images/icon_circle.png';
-  static const String imagesPng = 'assets/images/png.jpeg';
+  static const String imagesJazz = 'assets/images/jazz.png';
 
 }
