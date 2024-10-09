@@ -2,21 +2,21 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io'; // For handling files
-import 'package:firebase_storage/firebase_storage.dart'; // Add Firebase Storage
+import 'package:firebase_storage/firebase_storage.dart'; // Firebase Storage
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart'; // For picking images
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:geocoding/geocoding.dart'; // For address fetching
 
 import '../screens/screen_module.dart';
 import '../screens/screen_sign_in.dart';
 
 class ControllerAuthentication extends GetxController {
   var isLoading = false.obs;
-  var lat = 0.0.obs;
-  var lng = 0.0.obs;
   var phoneNo = TextEditingController().obs;
   var phoneAuthError = ''.obs;
   var posId = TextEditingController().obs;
@@ -24,6 +24,7 @@ class ControllerAuthentication extends GetxController {
   var retailerAddress = TextEditingController().obs;
   var selectedAsset = TextEditingController().obs;
   var assetCamp = TextEditingController().obs;
+  var address = ''.obs;
   var selectedRetailerDetail = TextEditingController().obs;
   var images = <String>[].obs;
   var isPresent = false.obs;
@@ -41,6 +42,36 @@ class ControllerAuthentication extends GetxController {
     super.onClose();
   }
 
+  void onSelected(String value) {
+    selectedAsset.value.text = value;
+    selectedItem = value;
+    update();
+  }
+
+  void onImagePicked(String imagePath) {
+    // Only add unique image paths
+    if (!images.contains(imagePath)) {
+      images.add(imagePath);
+    }
+  }
+
+  final List<String> retailerDetails = [
+    'Facia', 'Wali point', 'In store branding', "OOH", "Others(Specify)", "BTL activity", "Dedicated shop"
+  ];
+
+  final List<String> assetsCamp = [
+    'Jazz', 'Zong', 'Telenor', "Ufone", "Others"
+  ];
+
+  String? selectedItem;
+  String? selectedDetails;
+
+  void onSelectedRetailer(String value) {
+    selectedDetails = value;
+    selectedRetailerDetail.value.text = value;
+    update();
+  }
+
   void startSessionTimer() {
     sessionTimer?.cancel();
     sessionTimer = Timer(Duration(seconds: sessionTimeoutDuration), () {
@@ -52,7 +83,7 @@ class ControllerAuthentication extends GetxController {
     sessionTimer?.cancel();
   }
 
-  /// Method to pick an image and upload it to Firebase Storage
+  /// Pick and Upload Image
   Future<void> pickAndUploadImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
@@ -60,9 +91,8 @@ class ControllerAuthentication extends GetxController {
     if (pickedFile != null) {
       File imageFile = File(pickedFile.path);
       try {
-        // Upload image to Firebase Storage
         String downloadUrl = await uploadImageToStorage(imageFile);
-        images.add(downloadUrl); // Add the download URL to the images list
+        onImagePicked(downloadUrl);
         log('Image uploaded and URL stored: $downloadUrl');
       } catch (e) {
         log('Error uploading image: $e');
@@ -70,9 +100,8 @@ class ControllerAuthentication extends GetxController {
     }
   }
 
-  /// Uploads the selected image to Firebase Storage and returns the download URL
+  /// Uploads images to Firebase Storage
   Future<String> uploadImageToStorage(File imageFile) async {
-    log("Images uploaded successfully: $images");
     String fileName = DateTime.now().millisecondsSinceEpoch.toString();
     Reference storageRef = _storage.ref().child('images/$fileName');
     UploadTask uploadTask = storageRef.putFile(imageFile);
@@ -81,42 +110,54 @@ class ControllerAuthentication extends GetxController {
     return await taskSnapshot.ref.getDownloadURL();
   }
 
-  /// Save data including image URLs and attendance to Firestore
-  Future<void> saveData(double lat, double lng) async {
+  /// Clear all input fields
+  void clearTextControllers() {
+    phoneNo.value.clear();
+    posId.value.clear();
+    retailerName.value.clear();
+    retailerAddress.value.clear();
+    selectedAsset.value.clear();
+    assetCamp.value.clear();
+    selectedRetailerDetail.value.clear();
+  }
+
+  /// Save data to Firestore
+  Future<void> saveData() async {
+    if (phoneNo.value.text.isEmpty || posId.value.text.isEmpty || retailerName.value.text.isEmpty) {
+      Get.snackbar("Error", "Please fill in all required fields!", snackPosition: SnackPosition.BOTTOM);
+      return;
+    }
     try {
+      isLoading(true);
       startSessionTimer();
       CollectionReference users = _firestore.collection('users');
+      Placemark? placemark = await getAddressFromCurrentLocation();
+      String formattedAddress = placemark != null
+          ? '${placemark.subLocality}, ${placemark.locality}, ${placemark.country}'
+          : 'Address not found';
+
+      log('Current Address: $formattedAddress');
+
       await users.add({
-        'latitude': lat,
-        'longitude': lng,
         'timestamp': FieldValue.serverTimestamp(),
         'posId': posId.value.text,
         'phoneNo': phoneNo.value.text,
         'retailerName': retailerName.value.text,
         'retailerAddress': retailerAddress.value.text,
+        'address': address.value,
+        'formattedAddress': formattedAddress,
         'selectedAsset': selectedAsset.value.text,
         'assetCamp': assetCamp.value.text,
         'selectedRetailerDetail': selectedRetailerDetail.value.text,
         'images': images.isNotEmpty ? images : [],
         'isPresent': isPresent.value,
-        'timestamp': FieldValue.serverTimestamp(),
       });
-      print('Selected Asset: ${selectedAsset.value.text}');
-      print('POSID: ${posId.value.text}');
-      print('Name: ${retailerName.value.text}');
-      print('Selected Asset camp: ${assetCamp.value.text}');
-      print('selectedRetailerDetail Asset: ${selectedRetailerDetail.value.text}');
-      print('Selected Asset: ${images.isNotEmpty ? images : []}');
-      print('Selected Asset: ${isPresent.value}');
-      print('Address: ${retailerAddress.value.text}');
-      print('isPresent: $isPresent');
-      print('Latitude: $lat');
-      print('Longitude: $lng');
-      print('Phone No: $phoneNo');
-      log('Location, images, and attendance status saved successfully');
+
       Get.snackbar("Success", "Data uploaded successfully!", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
     } catch (error) {
       log('Failed to save data: $error');
+    } finally {
+      isLoading(false);
     }
   }
 
@@ -129,40 +170,24 @@ class ControllerAuthentication extends GetxController {
     }
   }
 
-  Future<void> getLocation() async {
-    const String url = 'https://www.gomaps.pro/geolocation/v1/geolocate?key=AlzaSyfeW0nR9wzFCtGWE_JoHuAfPJmT7Cg9z0I';
-    isLoading.value = true;
-
-    try {
-      final response = await http.post(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        lat.value = data['location']['lat'];
-        lng.value = data['location']['lng'];
-        await saveData(lat.value, lng.value);
-      } else {
-        log('Failed to get location: ${response.statusCode}');
-      }
-    } catch (e) {
-      log('Error fetching location: $e');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
+  /// Verifying phone number with Firestore whitelist
   Future<void> verifyPhoneNumber() async {
     isLoading.value = true;
 
     try {
+      log("Verifying phone number: ${phoneNo.value.text}");
       bool isWhitelisted = await checkIfPhoneNumberIsWhitelisted(phoneNo.value.text);
+
       if (!isWhitelisted) {
-        Get.snackbar("Error", "Your phone number is not allowed to access this app.");
+        Get.snackbar("Error", "Your phone number is not allowed to access this app.", backgroundColor: Colors.red, snackPosition: SnackPosition.TOP, colorText: Colors.black);
         return;
       }
+
+      Get.snackbar("Success", "Your phone number is whitelisted.", backgroundColor: Colors.green, snackPosition: SnackPosition.TOP, colorText: Colors.black);
       Get.offAll(() => ScreenModule());
     } catch (e) {
       log('Error verifying phone number: $e');
-      Get.snackbar("Error", "Failed to verify phone number.");
+      Get.snackbar("Error", "Failed to verify phone number.", backgroundColor: Colors.red, snackPosition: SnackPosition.TOP, colorText: Colors.black);
     } finally {
       isLoading.value = false;
     }
@@ -176,9 +201,10 @@ class ControllerAuthentication extends GetxController {
 
     try {
       var result = await _firestore
-          .collection('phoneNo')
+          .collection('users')
           .where('phoneNo', isEqualTo: phoneNumber)
           .get();
+
       return result.docs.isNotEmpty;
     } catch (e) {
       log('Error checking whitelist: $e');
@@ -186,20 +212,40 @@ class ControllerAuthentication extends GetxController {
     }
   }
 
-  /// Method to mark attendance
+  /// Mark attendance
   void markAttendance(bool isPresentValue) {
-    isPresent.value = isPresentValue; // Update attendance status
+    isPresent.value = isPresentValue;
   }
 
-  /// Method to save attendance status to Firestore
+  /// Save attendance status in Firestore
   Future<void> saveAttendanceStatus() async {
     if (!isPresent.value) {
       Get.snackbar("Error", "You must mark your attendance!", snackPosition: SnackPosition.BOTTOM);
       return;
     }
 
-    // Save the attendance status to Firestore
-    await saveData(lat.value, lng.value);
-    Get.snackbar("Success", "Attendance marked successfully!", snackPosition: SnackPosition.BOTTOM);
+    try {
+      await _firestore.collection('attendance').add({
+        'phoneNo': phoneNo.value.text,
+        'isPresent': isPresent.value,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      Get.snackbar("Success", "Attendance saved successfully!", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
+    } catch (e) {
+      log("Error saving attendance: $e");
+    }
+  }
+
+  /// Get address from current location
+  Future<Placemark?> getAddressFromCurrentLocation() async {
+    try {
+      var position = await Geolocator.getCurrentPosition();
+      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      return placemarks.isNotEmpty ? placemarks.first : null;
+    } catch (e) {
+      log("Error fetching current address: $e");
+      return null;
+    }
   }
 }

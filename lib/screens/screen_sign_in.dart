@@ -16,16 +16,21 @@ class ScreenLogin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ControllerAuthentication controllerLocation =  Get.put(ControllerAuthentication());
-    final height = MediaQuery.sizeOf(context).height;
-    final width = MediaQuery.sizeOf(context).width;
+    ControllerAuthentication controllerLocation = Get.put(
+        ControllerAuthentication());
+    final height = MediaQuery
+        .sizeOf(context)
+        .height;
+    final width = MediaQuery
+        .sizeOf(context)
+        .width;
     return Scaffold(
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(15.r),
+              borderRadius: BorderRadius.circular(15.r),
               child: Image.asset("assets/images/jazz.png")),
           Text(
             "Jazz",
@@ -61,35 +66,40 @@ class ScreenLogin extends StatelessWidget {
               color: Color(0xFF190733),
             ),
             child: Center(
-              child: TextFormField(
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14.sp,
-                ),
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(
+              child: Obx(() {
+                return TextFormField(
+                  controller: controllerLocation.phoneNo.value,
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 14.sp,
                   ),
-                  hintText: "+92 300 1234567",
-                ),
-              ),
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintStyle: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14.sp,
+                    ),
+                    hintText: "+92 300 1234567",
+                  ),
+                );
+              }),
             ),
           ).marginOnly(
             bottom: 10.h,
           ),
-          CustomButton(
-            buttonColor: AppColors.buttonColor,
-            buttonText: 'Login',
-            onTap: () {
-             // await controllerLocation.getLocation();
-              Get.to(ScreenModule());
-            },
-          ).marginOnly(
+          Obx(() {
+            return CustomButton(
+              isLoading: controllerLocation.isLoading.value,
+              buttonColor: AppColors.buttonColor,
+              buttonText: 'Login',
+              onTap: () async {
+                await controllerLocation.verifyPhoneNumber();
+              },
+            );
+          }).marginOnly(
             top: 10.w,
           ),
         ],

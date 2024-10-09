@@ -1,4 +1,4 @@
-import 'package:Jazz/screens/screen_add_information.dart';
+import 'package:Jazz/screens/screen_live_location.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';

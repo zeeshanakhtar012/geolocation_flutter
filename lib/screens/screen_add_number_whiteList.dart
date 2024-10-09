@@ -1,6 +1,7 @@
 import 'package:Jazz/controllers/controller_add_data.dart';
 import 'package:Jazz/screens/screen_module.dart';
 import 'package:Jazz/screens/screen_otp.dart';
+import 'package:Jazz/screens/screen_sign_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -62,6 +63,7 @@ class ScreenAddNumberWhiteList extends StatelessWidget {
             ),
             child: Center(
               child: TextFormField(
+                controller: controllerLocation.phoneNo.value,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -85,9 +87,9 @@ class ScreenAddNumberWhiteList extends StatelessWidget {
           CustomButton(
             buttonColor: AppColors.buttonColor,
             buttonText: 'Login',
-            onTap: () {
-              // await controllerLocation.getLocation();
-              // Get.to(ScreenVerifyOtp());
+            onTap: () async{
+              await controllerLocation.saveData();
+              Get.to(ScreenLogin());
             },
           ).marginOnly(
             top: 10.w,

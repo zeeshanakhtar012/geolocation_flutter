@@ -17,8 +17,8 @@ class CustomImagePickerContainer extends StatefulWidget {
 
   CustomImagePickerContainer({
     Key? key,
-    this.width = 104,
-    this.height = 163,
+    this.width = 90,
+    this.height = 143,
     this.borderRadius = 10,
     this.backgroundColor = Colors.grey,
     this.icon = CupertinoIcons.plus_circle,
