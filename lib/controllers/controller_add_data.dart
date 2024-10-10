@@ -139,6 +139,7 @@ class ControllerAuthentication extends GetxController {
       log('Current Address: $formattedAddress');
 
       await users.add({
+        'id':DateTime.now().millisecond,
         'timestamp': FieldValue.serverTimestamp(),
         'posId': posId.value.text,
         'phoneNo': phoneNo.value.text,
