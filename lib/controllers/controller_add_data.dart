@@ -1,33 +1,34 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:developer';
-import 'dart:io'; // For handling files
-import 'package:firebase_storage/firebase_storage.dart'; // Firebase Storage
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:image_picker/image_picker.dart'; // For picking images
-import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geocoding/geocoding.dart'; // For address fetching
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../model/retailers.dart';
+import '../model/user.dart';
 import '../screens/screen_module.dart';
 import '../screens/screen_sign_in.dart';
 
 class ControllerAuthentication extends GetxController {
   var isLoading = false.obs;
   var phoneNo = TextEditingController().obs;
+  var posid = TextEditingController().obs;
   var phoneAuthError = ''.obs;
-  var posId = TextEditingController().obs;
-  var retailerName = TextEditingController().obs;
-  var retailerAddress = TextEditingController().obs;
   var selectedAsset = TextEditingController().obs;
+  var retailerAddress = TextEditingController().obs;
+  var retailerName = TextEditingController().obs;
   var assetCamp = TextEditingController().obs;
+  var fid = TextEditingController().obs; // User fid
   var address = ''.obs;
   var selectedRetailerDetail = TextEditingController().obs;
   var images = <String>[].obs;
   var isPresent = false.obs;
+  var retailersList = <RetailerModel>[].obs;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -39,6 +40,7 @@ class ControllerAuthentication extends GetxController {
   void onClose() {
     cancelSessionTimer();
     phoneNo.value.dispose();
+    posid.value.dispose();
     super.onClose();
   }
 
@@ -55,10 +57,10 @@ class ControllerAuthentication extends GetxController {
     }
   }
 
+  var selectedRetailerDetails = <String>[].obs;
   final List<String> retailerDetails = [
-    'Facia', 'Wali point', 'In store branding', "OOH", "Others(Specify)", "BTL activity", "Dedicated shop"
+    'Facia', 'Wall paint', 'In store branding', "OOH", "Others(Specify)", "BTL activity", "Dedicated shop"
   ];
-
   final List<String> assetsCamp = [
     'Jazz', 'Zong', 'Telenor', "Ufone", "Others"
   ];
@@ -66,9 +68,13 @@ class ControllerAuthentication extends GetxController {
   String? selectedItem;
   String? selectedDetails;
 
+  // Method to handle multiple selections
   void onSelectedRetailer(String value) {
-    selectedDetails = value;
-    selectedRetailerDetail.value.text = value;
+    if (selectedRetailerDetails.contains(value)) {
+      selectedRetailerDetails.remove(value);  // Remove if already selected
+    } else {
+      selectedRetailerDetails.add(value);  // Add to list if not selected
+    }
     update();
   }
 
@@ -113,52 +119,70 @@ class ControllerAuthentication extends GetxController {
   /// Clear all input fields
   void clearTextControllers() {
     phoneNo.value.clear();
-    posId.value.clear();
-    retailerName.value.clear();
-    retailerAddress.value.clear();
+    posid.value.clear();
     selectedAsset.value.clear();
+    retailerAddress.value.clear();
+    retailerName.value.clear();
     assetCamp.value.clear();
+    fid.value.clear();
     selectedRetailerDetail.value.clear();
   }
 
-  /// Save data to Firestore
-  Future<void> saveData() async {
-    if (phoneNo.value.text.isEmpty || posId.value.text.isEmpty || retailerName.value.text.isEmpty) {
-      Get.snackbar("Error", "Please fill in all required fields!", snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
+  Future<void> saveUserFid(String fidValue) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_fid', fidValue);
+    log('User fid saved: $fidValue');
+  }
+
+  Future<void> addUserDetailsFromMobile(User user, List<Map<String, dynamic>> modulesData) async {
     try {
-      isLoading(true);
-      startSessionTimer();
-      CollectionReference users = _firestore.collection('users');
-      Placemark? placemark = await getAddressFromCurrentLocation();
-      String formattedAddress = placemark != null
-          ? '${placemark.subLocality}, ${placemark.locality}, ${placemark.country}'
-          : 'Address not found';
+      // Save user to Firestore if not already saved
+      await _firestore.collection('users').doc(user.userId).set(user.toMap(), SetOptions(merge: true)); // Merge to avoid overwriting existing user data
 
-      log('Current Address: $formattedAddress');
+      // Save fid to SharedPreferences
+      await saveUserFid("${user.fid}");
 
-      await users.add({
-        'id':DateTime.now().millisecond,
-        'timestamp': FieldValue.serverTimestamp(),
-        'posId': posId.value.text,
-        'phoneNo': phoneNo.value.text,
-        'retailerName': retailerName.value.text,
-        'retailerAddress': retailerAddress.value.text,
-        'address': address.value,
-        'formattedAddress': formattedAddress,
-        'selectedAsset': selectedAsset.value.text,
-        'assetCamp': assetCamp.value.text,
-        'selectedRetailerDetail': selectedRetailerDetail.value.text,
-        'images': images.isNotEmpty ? images : [],
-        'isPresent': isPresent.value,
-      });
+      log("User saved successfully!");
 
-      Get.snackbar("Success", "Data uploaded successfully!", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
+      // Save details as a subcollection for the user
+      for (Map<String, dynamic> module in modulesData) {
+        String moduleName = module['moduleName']; // Extract module name dynamically
+        Map<String, dynamic> moduleData = module['moduleData']; // Extract module data
+
+        await _firestore
+            .collection('users')
+            .doc(user.userId)
+            .collection('modules')
+            .doc(moduleName)
+            .set(moduleData, SetOptions(merge: true)); // Merge to update existing module data
+
+        log("$moduleName saved successfully!");
+      }
     } catch (error) {
-      log('Failed to save data: $error');
-    } finally {
-      isLoading(false);
+      log("Failed to save user or details: $error");
+    }
+  }
+
+  // Upload custom module data by moduleName
+  Future<void> uploadModuleData(String moduleName, Map<String, dynamic> moduleData) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
+
+      if (userId != null) {
+        await _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('modules')
+            .doc(moduleName)
+            .set(moduleData, SetOptions(merge: true));
+        Get.snackbar("Success", "Module data uploaded successfully!", backgroundColor: Colors.green);
+      } else {
+        Get.snackbar("Error", "User ID not found. Please log in again.", backgroundColor: Colors.red);
+      }
+    } catch (error) {
+      log("Failed to upload module data: $error");
+      Get.snackbar("Error", "Failed to upload module data.", backgroundColor: Colors.red);
     }
   }
 
@@ -170,22 +194,20 @@ class ControllerAuthentication extends GetxController {
       log("Error logging out: $e");
     }
   }
-
-  /// Verifying phone number with Firestore whitelist
+  // Login Process
   Future<void> verifyPhoneNumber() async {
     isLoading.value = true;
 
     try {
       log("Verifying phone number: ${phoneNo.value.text}");
-      bool isWhitelisted = await checkIfPhoneNumberIsWhitelisted(phoneNo.value.text);
+
+      bool isWhitelisted = await checkIfPhoneNumberIsWhitelisted(phoneNo.value.text, fid.value.text);
 
       if (!isWhitelisted) {
         Get.snackbar("Error", "Your phone number is not allowed to access this app.", backgroundColor: Colors.red, snackPosition: SnackPosition.TOP, colorText: Colors.black);
         return;
       }
 
-      Get.snackbar("Success", "Your phone number is whitelisted.", backgroundColor: Colors.green, snackPosition: SnackPosition.TOP, colorText: Colors.black);
-      Get.offAll(() => ScreenModule());
     } catch (e) {
       log('Error verifying phone number: $e');
       Get.snackbar("Error", "Failed to verify phone number.", backgroundColor: Colors.red, snackPosition: SnackPosition.TOP, colorText: Colors.black);
@@ -194,22 +216,63 @@ class ControllerAuthentication extends GetxController {
     }
   }
 
-  Future<bool> checkIfPhoneNumberIsWhitelisted(String phoneNumber) async {
-    if (phoneNumber.isEmpty) {
-      log('Error: Phone number is empty.');
+  Future<bool> checkIfPhoneNumberIsWhitelisted(String phoneNumber, String fid) async {
+    if (phoneNumber.isEmpty || fid.isEmpty) {
+      log('Error: Phone number or fid is empty.');
       return false;
     }
 
     try {
-      var result = await _firestore
-          .collection('users')
-          .where('phoneNo', isEqualTo: phoneNumber)
+      var result = await _firestore.collection('users')
+          .where('phoneNumber', isEqualTo: phoneNumber)
+          .where('fid', isEqualTo: fid) // Check for fid as well
+          .limit(1) // Limit to 1 result for efficiency
           .get();
+      if (result.docs.isNotEmpty) {
+        // User ID found, save it
+        String userId = result.docs.first.id; // Get user ID from the document ID
+        await saveUserId(userId); // Save user ID in SharedPreferences
 
-      return result.docs.isNotEmpty;
+        log('Phone number is whitelisted and fid matches.');
+        Get.snackbar("Success", "Congrats!! Your phoneNo is WhiteListed!", backgroundColor: Colors.green, snackPosition: SnackPosition.TOP, colorText: Colors.black);
+        Get.offAll(ScreenModule());
+        return true;
+      } else {
+        log('Phone number is not whitelisted or fid does not match.');
+        return false;
+      }
     } catch (e) {
       log('Error checking whitelist: $e');
       return false;
+    }
+  }
+
+  Future<void> saveUserId(String userId) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', userId);
+    log('User ID saved: $userId');
+  }
+  // Fetch retailer usig POSID
+  Future<void> searchRetailersByPosId(String posId) async {
+    try {
+      isLoading(true); // Show loading indicator
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('retailers')
+          .where('posId', isEqualTo: posId) // Search by POS ID
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        var retailerData = querySnapshot.docs.first.data() as Map<String, dynamic>;
+        retailerName.value.text = retailerData['retailerName'] ?? '';
+        retailerAddress.value.text = retailerData['retailerAddress'] ?? '';
+      } else {
+        Get.snackbar('No Retailer Found', 'No retailer found with this POS ID', snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+      }
+    } catch (e) {
+      log("ERROR to fetch retailer $e");
+      Get.snackbar('Error', 'Failed to search retailers: $e', snackPosition: SnackPosition.BOTTOM);
+    } finally {
+      isLoading(false); // Hide loading indicator
     }
   }
 
@@ -218,35 +281,24 @@ class ControllerAuthentication extends GetxController {
     isPresent.value = isPresentValue;
   }
 
-  /// Save attendance status in Firestore
-  Future<void> saveAttendanceStatus() async {
-    if (!isPresent.value) {
-      Get.snackbar("Error", "You must mark your attendance!", snackPosition: SnackPosition.BOTTOM);
-      return;
-    }
-
-    try {
-      await _firestore.collection('attendance').add({
-        'phoneNo': phoneNo.value.text,
-        'isPresent': isPresent.value,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      Get.snackbar("Success", "Attendance saved successfully!", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
-    } catch (e) {
-      log("Error saving attendance: $e");
-    }
+  void goToScreenModule() {
+    Get.to(() => ScreenModule());
   }
-
-  /// Get address from current location
-  Future<Placemark?> getAddressFromCurrentLocation() async {
+  Future<void> logOutUser() async {
+    isLoading(true); // Show loading indicator
     try {
-      var position = await Geolocator.getCurrentPosition();
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-      return placemarks.isNotEmpty ? placemarks.first : null;
+      // Clear user-related data
+      clearTextControllers();
+      cancelSessionTimer();
+      await Future.delayed(Duration(seconds: 2));
+      Get.offAll(() => ScreenLogin());
+
+      Get.snackbar("Logged Out", "You have successfully logged out.", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
     } catch (e) {
-      log("Error fetching current address: $e");
-      return null;
+      log("Error during logout: $e");
+      Get.snackbar("Error", "Failed to log out.", snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+    } finally {
+      isLoading(false);
     }
   }
 }

@@ -1,7 +1,13 @@
 import 'package:Jazz/screens/screen_live_location.dart';
+import 'package:Jazz/screens/screen_market_visit_log.dart';
+import 'package:Jazz/screens/screen_module_intelligence.dart';
+import 'package:Jazz/screens/screen_new_asset_deployment.dart';
+import 'package:Jazz/screens/screen_new_trade_asset.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+
+import '../controllers/controller_add_data.dart';
 
 class ScreenModule extends StatelessWidget {
   const ScreenModule({super.key});
@@ -20,22 +26,40 @@ class ScreenModule extends StatelessWidget {
               fit: BoxFit.cover,
               "assets/images/jazz.png"),
         ),
+          actions: [
+            Obx(() {
+              final controller = Get.find<ControllerAuthentication>();
+              return controller.isLoading.value
+                  ? Padding(
+                padding: const EdgeInsets.only(right: 20.0),
+                child: CircularProgressIndicator(
+                  color: Colors.red, // Customize the color if needed
+                ),
+              )
+                  : IconButton(
+                onPressed: () {
+                  controller.logOutUser();
+                },
+                icon: Icon(Icons.exit_to_app, color: Colors.red),
+              );
+            }),
+          ]
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _modules(title: 'Jazz Trade Intelligence', onTap: () {
-            Get.to(ScreenAddInformation(isIntelligence: true,));
+          _modules(title: 'Market Intelligence', onTap: () {
+            Get.to(ScreenModuleIntelligence());
           }),
-          _modules(title: 'Visit Log', onTap: () {
-            Get.to(ScreenAddInformation(isVisit: true,));
+          _modules(title: 'Market Visit Log', onTap: () {
+            Get.to(ScreenMarketVisitLog());
           }),
-          _modules(title: 'Asset Deployment', onTap: () {
-            Get.to(ScreenAddInformation(isAssetDeploy: true,));
+          _modules(title: 'New Asset Deployment', onTap: () {
+            Get.to(ScreenNewAssetDeployment());
           }),
-          _modules(title: 'Trade Asset', onTap: () {
-            Get.to(ScreenAddInformation(isTradeAssets: true,));
+          _modules(title: 'New Trade Asset Requirements', onTap: () {
+            Get.to(ScreenNewTradeAsset());
           }),
         ],
       ).marginSymmetric(
