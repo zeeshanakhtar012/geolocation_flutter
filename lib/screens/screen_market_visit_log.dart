@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geocoding/geocoding.dart';
@@ -197,9 +195,9 @@ class ScreenMarketVisitLog extends StatelessWidget {
         buttonText: "Upload Data",
         onTap: () async {
           controller.isLoading.value = true;
-          for (String imagePath in controller.images) {
-            await controller.uploadImageToStorage(File(imagePath));
-          }
+          // for (String imagePath in controller.images) {
+          //   await controller.uploadImageToStorage(File(imagePath));
+          // }
 
           var dateTime = DateTime.now();
           String moduleName = "MarketVisit";

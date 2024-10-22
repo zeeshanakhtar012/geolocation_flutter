@@ -11,6 +11,7 @@ class User {
   String? userAddress;
   String? imageUrl;
   Map<String, dynamic>? linkedRetailers;
+  List<Map<String, dynamic>> modules; // Property to hold module data
 
   User({
     this.userId,
@@ -25,10 +26,11 @@ class User {
     this.userName,
     this.imageUrl,
     this.linkedRetailers,
+    this.modules = const [], // Default to an empty list
   });
 
-  // Factory method to create UserModel from Firestore document snapshot
-  factory User.fromDocumentSnapshot(Map<String, dynamic> doc) {
+  // Factory method to create User from Firestore document snapshot
+  factory User.fromDocumentSnapshot(Map<String, dynamic> doc, List<Map<String, dynamic>> modules) {
     return User(
       userId: doc['userId'],
       phoneNumber: doc['phoneNumber'],
@@ -42,10 +44,11 @@ class User {
       mbu: doc['mbu'],
       imageUrl: doc.containsKey('imageUrl') ? doc['imageUrl'] : null,
       linkedRetailers: doc['linkedRetailers'] != null ? Map<String, dynamic>.from(doc['linkedRetailers']) : null,
+      modules: modules, // Assign the modules fetched from Firestore
     );
   }
 
-  // Convert UserModel to a Firestore-friendly map
+  // Convert User to a Firestore-friendly map
   Map<String, dynamic> toMap() {
     return {
       'userId': userId,
@@ -60,6 +63,7 @@ class User {
       'mbu': mbu,
       'imageUrl': imageUrl,
       'linkedRetailers': linkedRetailers,
+      // Note: Handle modules if you want to store them back to Firestore
     };
   }
 }

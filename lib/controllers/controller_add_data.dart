@@ -18,6 +18,7 @@ class ControllerAuthentication extends GetxController {
   var isLoading = false.obs;
   var phoneNo = TextEditingController().obs;
   var posid = TextEditingController().obs;
+  var password = TextEditingController().obs;
   var phoneAuthError = ''.obs;
   var selectedAsset = TextEditingController().obs;
   var retailerAddress = TextEditingController().obs;
@@ -37,10 +38,10 @@ class ControllerAuthentication extends GetxController {
   final int sessionTimeoutDuration = 60 * 60;
 
   @override
+  @override
   void onClose() {
+    clearTextControllers();
     cancelSessionTimer();
-    phoneNo.value.dispose();
-    posid.value.dispose();
     super.onClose();
   }
 
@@ -51,11 +52,11 @@ class ControllerAuthentication extends GetxController {
   }
 
   void onImagePicked(String imagePath) {
-    // Only add unique image paths
-    if (!images.contains(imagePath)) {
+    if (!images.contains(imagePath) && images.length < 6) {
       images.add(imagePath);
     }
   }
+
 
   var selectedRetailerDetails = <String>[].obs;
   final List<String> retailerDetails = [
@@ -91,6 +92,11 @@ class ControllerAuthentication extends GetxController {
 
   /// Pick and Upload Image
   Future<void> pickAndUploadImage() async {
+    if (images.length >= 6) {
+      Get.snackbar("Limit Reached", "You can only upload 6 images.", backgroundColor: Colors.red);
+      return;
+    }
+
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
@@ -98,13 +104,14 @@ class ControllerAuthentication extends GetxController {
       File imageFile = File(pickedFile.path);
       try {
         String downloadUrl = await uploadImageToStorage(imageFile);
-        onImagePicked(downloadUrl);
+        onImagePicked(downloadUrl); // Only add unique image paths
         log('Image uploaded and URL stored: $downloadUrl');
       } catch (e) {
         log('Error uploading image: $e');
       }
     }
   }
+
 
   /// Uploads images to Firebase Storage
   Future<String> uploadImageToStorage(File imageFile) async {
@@ -128,12 +135,14 @@ class ControllerAuthentication extends GetxController {
     selectedRetailerDetail.value.clear();
   }
 
+  // save user fid
   Future<void> saveUserFid(String fidValue) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_fid', fidValue);
     log('User fid saved: $fidValue');
   }
 
+  // add user data through the app
   Future<void> addUserDetailsFromMobile(User user, List<Map<String, dynamic>> modulesData) async {
     try {
       // Save user to Firestore if not already saved
@@ -176,7 +185,7 @@ class ControllerAuthentication extends GetxController {
             .collection('modules')
             .doc(moduleName)
             .set(moduleData, SetOptions(merge: true));
-        Get.snackbar("Success", "Module data uploaded successfully!", backgroundColor: Colors.green);
+        Get.snackbar("Success", "$moduleName data uploaded successfully!", backgroundColor: Colors.green);
       } else {
         Get.snackbar("Error", "User ID not found. Please log in again.", backgroundColor: Colors.red);
       }
@@ -201,7 +210,7 @@ class ControllerAuthentication extends GetxController {
     try {
       log("Verifying phone number: ${phoneNo.value.text}");
 
-      bool isWhitelisted = await checkIfPhoneNumberIsWhitelisted(phoneNo.value.text, fid.value.text);
+      bool isWhitelisted = await checkIfPhoneNumberIsWhitelisted(phoneNo.value.text, password.value.text);
 
       if (!isWhitelisted) {
         Get.snackbar("Error", "Your phone number is not allowed to access this app.", backgroundColor: Colors.red, snackPosition: SnackPosition.TOP, colorText: Colors.black);
@@ -215,21 +224,20 @@ class ControllerAuthentication extends GetxController {
       isLoading.value = false;
     }
   }
-
-  Future<bool> checkIfPhoneNumberIsWhitelisted(String phoneNumber, String fid) async {
-    if (phoneNumber.isEmpty || fid.isEmpty) {
+  // check phone Number
+  Future<bool> checkIfPhoneNumberIsWhitelisted(String phoneNo, String password) async {
+    if (phoneNo.isEmpty || password.isEmpty) {
       log('Error: Phone number or fid is empty.');
       return false;
     }
 
     try {
       var result = await _firestore.collection('users')
-          .where('phoneNumber', isEqualTo: phoneNumber)
-          .where('fid', isEqualTo: fid) // Check for fid as well
-          .limit(1) // Limit to 1 result for efficiency
+          .where('phoneNumber', isEqualTo: phoneNo)
+          .where('password', isEqualTo: password)
+          .limit(1)
           .get();
       if (result.docs.isNotEmpty) {
-        // User ID found, save it
         String userId = result.docs.first.id; // Get user ID from the document ID
         await saveUserId(userId); // Save user ID in SharedPreferences
 
@@ -247,6 +255,7 @@ class ControllerAuthentication extends GetxController {
     }
   }
 
+  //save userID
   Future<void> saveUserId(String userId) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', userId);
@@ -280,10 +289,11 @@ class ControllerAuthentication extends GetxController {
   void markAttendance(bool isPresentValue) {
     isPresent.value = isPresentValue;
   }
-
+  //screen navigation
   void goToScreenModule() {
     Get.to(() => ScreenModule());
   }
+  // logout
   Future<void> logOutUser() async {
     isLoading(true); // Show loading indicator
     try {

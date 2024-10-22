@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -147,7 +148,7 @@ class ScreenModuleIntelligence extends StatelessWidget {
                           SizedBox(height: 10.h),
                           _buildImageUploadSection(),
                           SizedBox(height: 10.h),
-                          _buildUploadButton(),
+                          buildUploadButton(),
                         ],
                       ).marginSymmetric(horizontal: 15.w),
                     );
@@ -327,30 +328,33 @@ class ScreenModuleIntelligence extends StatelessWidget {
     );
   }
 
-  Widget _buildUploadButton() {
+  Widget buildUploadButton() {
     return Obx(() {
       return CustomButton(
         isLoading: controller.isLoading.value,
         buttonColor: AppColors.buttonColor,
         buttonText: "Upload Data",
         onTap: () async {
-          if (user == null) {
-            log("User is null.");
-            // Handle user null case here, e.g., show an error message or return
-            return;
-          }
+          controller.isLoading.value = true;
+          // for (String imagePath in controller.images) {
+          //   await controller.uploadImageToStorage(File(imagePath));
+          // }
 
-          Map<String, dynamic> modulesData = {
-            'assetType': controller.retailerDetails,
-            'currentLocation': controller.address.value,
-            'companyAssets': controller.assetCamp.value,
-            'address': controller.address.value,
+          var dateTime = DateTime.now();
+          String moduleName = "MarketIntelligence";
+          Map<String, dynamic> moduleData = {
+            "location": controller.address.value,
+            "assetType": controller.selectedAsset.value.text,
+            "companyAsset": controller.selectedRetailerDetails.value.join(', '),
+            "visitDate": dateTime.toIso8601String(),
+            "images": controller.images.value,
+            "time": dateTime,
           };
-
-          await controller.addUserDetailsFromMobile(user!, [modulesData]);
+          await controller.uploadModuleData(moduleName, moduleData);
+          controller.isLoading.value = false;
         },
-      );
-    }).marginSymmetric(vertical: 8.h);
+      ).marginSymmetric(vertical: 8.h);
+    });
   }
 
   Future<bool> checkPermissionStatus() async {

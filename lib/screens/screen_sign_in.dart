@@ -89,7 +89,7 @@ class ScreenLogin extends StatelessWidget {
               child: Center(
                 child: Obx(() {
                   return TextFormField(
-                    controller: controllerLocation.fid.value,
+                    controller: controllerLocation.password.value,
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -103,7 +103,7 @@ class ScreenLogin extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         fontSize: 14.sp,
                       ),
-                      hintText: "User FID",
+                      hintText: "Enter password",
                     ),
                   );
                 }),
