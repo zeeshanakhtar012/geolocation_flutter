@@ -195,9 +195,6 @@ class ScreenMarketVisitLog extends StatelessWidget {
         buttonText: "Upload Data",
         onTap: () async {
           controller.isLoading.value = true;
-          // for (String imagePath in controller.images) {
-          //   await controller.uploadImageToStorage(File(imagePath));
-          // }
 
           var dateTime = DateTime.now();
           String moduleName = "MarketVisit";
@@ -210,6 +207,9 @@ class ScreenMarketVisitLog extends StatelessWidget {
             "time": dateTime,
           };
           await controller.uploadModuleData(moduleName, moduleData);
+          controller.retailerName.value.clear();
+          controller.retailerAddress.value.clear();
+          controller.images.value = [];
           controller.isLoading.value = false;
         },
       ).marginSymmetric(vertical: 8.h);

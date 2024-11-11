@@ -331,6 +331,11 @@ class ScreenNewAssetDeployment extends StatelessWidget {
             "time": dateTime,
           };
           await controller.uploadModuleData(moduleName, moduleData);
+          controller.retailerName.value.clear();
+          controller.retailerAddress.value.clear();
+          controller.selectedAsset.value.clear();
+          controller.selectedRetailerDetails.value.clear();
+          controller.images.value = [];
           controller.isLoading.value = false;
         },
       ).marginSymmetric(vertical: 8.h);

@@ -13,11 +13,14 @@ class ScreenLogin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ControllerAuthentication controllerLocation = Get.put(ControllerAuthentication());
-    final height = MediaQuery.sizeOf(context).height;
-    final width = MediaQuery.sizeOf(context).width;
+    // Instantiate the ControllerAuthentication
+    ControllerAuthentication controllerAuthentication = Get.put(ControllerAuthentication());
+    final height = MediaQuery.of(context).size.height;
+    final width = MediaQuery.of(context).size.width;
+
     return Scaffold(
       appBar: AppBar(
+        title: const Text("Login"), // You can customize this as needed
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -58,7 +61,7 @@ class ScreenLogin extends StatelessWidget {
               child: Center(
                 child: Obx(() {
                   return TextFormField(
-                    controller: controllerLocation.phoneNo.value,
+                    controller: controllerAuthentication.phoneNo.value,
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -89,7 +92,7 @@ class ScreenLogin extends StatelessWidget {
               child: Center(
                 child: Obx(() {
                   return TextFormField(
-                    controller: controllerLocation.password.value,
+                    controller: controllerAuthentication.password.value,
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -111,14 +114,14 @@ class ScreenLogin extends StatelessWidget {
             ).marginOnly(bottom: 10.h, top: 10.h),
             Obx(() {
               return CustomButton(
-                isLoading: controllerLocation.isLoading.value,
+                isLoading: controllerAuthentication.isLoading.value,
                 buttonColor: AppColors.buttonColor,
                 buttonText: 'Login',
                 onTap: () async {
-                  await controllerLocation.verifyPhoneNumber(); // You can pass the FID here
-                },
-              );
-            }).marginOnly(top: 10.w,),
+                  await controllerAuthentication.verifyPhoneNumber();
+                }
+                );
+            }).marginOnly(top: 10.w),
           ],
         ).marginSymmetric(horizontal: 20.w),
       ),

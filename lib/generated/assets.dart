@@ -2,9 +2,7 @@
 class Assets {
   Assets._();
 
-  static const String imagesHooray = 'assets/images/hooray.jpg';
-  static const String imagesIconLauncher = 'assets/images/icon_launcher.png';
   static const String imagesJazz = 'assets/images/jazz.png';
-  static const String imagesJazzIcon = 'assets/images/jazz_icon.png';
+  static const String imagesJazz ap icon logo = 'assets/images/jazz ap icon logo.png';
 
 }

@@ -1,8 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geocoding/geocoding.dart';
@@ -212,66 +209,85 @@ class ScreenModuleIntelligence extends StatelessWidget {
       children: [
         Text(
           "Company Assets",
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(color: Colors.black, fontSize: 16.sp, fontWeight: FontWeight.w500),
         ).marginOnly(bottom: 5.h),
-        MyInputField(
-          controller: TextEditingController(
-            text: controller.selectedRetailerDetails.join(', '),
-          ),
-          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-          readOnly: true,
-          textStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w500,
-          ),
-          hint: controller.selectedRetailerDetails.isNotEmpty
-              ? controller.selectedRetailerDetails.join(', ')
-              : "Company Asset",
-          suffix: PopupMenuButton<String>(
-            icon: Icon(
-              Icons.keyboard_arrow_down_sharp,
-              color: Colors.white,
-            ),
-            onSelected: (String selected) {
-              // Handle selection if needed
-            },
-            itemBuilder: (BuildContext context) {
-              return controller.retailerDetails.map((String choice) {
-                return PopupMenuItem<String>(
-                  value: choice,
-                  child: StatefulBuilder(
-                    builder: (BuildContext context, StateSetter setState) {
-                      bool isChecked = controller.selectedRetailerDetails.contains(choice);
-                      return Row(
+        GetBuilder<ControllerAuthentication>(
+          builder: (_) {
+            return MyInputField(
+              controller: TextEditingController(text: controller.selectedRetailerDetails.join(', ')),
+              padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+              readOnly: true,
+              textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
+              hint: controller.selectedRetailerDetails.isNotEmpty
+                  ? controller.selectedRetailerDetails.join(', ')
+                  : "Company Asset",
+              suffix: PopupMenuButton<String>(
+                icon: Icon(Icons.keyboard_arrow_down_sharp, color: Colors.white),
+                onSelected: (String selected) {
+                  if (selected == "Others (Specify)") {
+                    controller.showOthersInput.value = true;
+                  } else {
+                    controller.showOthersInput.value = false;
+                    if (!controller.selectedRetailerDetails.contains(selected)) {
+                      controller.selectedRetailerDetails.add(selected);
+                    }
+                  }
+                  controller.update(); // Trigger UI update
+                },
+                itemBuilder: (BuildContext context) {
+                  return controller.retailerDetails.map((String choice) {
+                    return PopupMenuItem<String>(
+                      value: choice,
+                      child: Row(
                         children: [
-                          Checkbox(
-                            value: isChecked,
+                          Obx(() => Checkbox(
+                            value: controller.selectedRetailerDetails.contains(choice),
                             onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  controller.selectedRetailerDetails.add(choice);
-                                } else {
-                                  controller.selectedRetailerDetails.remove(choice);
+                              if (value == true) {
+                                controller.selectedRetailerDetails.add(choice);
+                                if (choice == "Others (Specify)") {
+                                  controller.showOthersInput.value = true;
                                 }
-                              });
-                              controller.update(); // Refresh UI if needed
+                              } else {
+                                controller.selectedRetailerDetails.remove(choice);
+                                if (choice == "Others (Specify)") {
+                                  controller.showOthersInput.value = false;
+                                  controller.othersController.value;
+                                }
+                              }
+                              controller.update();
                             },
-                          ),
+                          )),
                           Text(choice),
                         ],
-                      );
-                    },
-                  ),
-                );
-              }).toList();
-            },
-          ),
+                      ),
+                    );
+                  }).toList();
+                },
+              ),
+            );
+          },
         ),
+        Obx(() {
+          return controller.showOthersInput.value
+              ? Padding(
+            padding: EdgeInsets.only(top: 10.h),
+            child: TextFormField(
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w600,
+              ),
+              controller: controller.othersController.value,
+              decoration: InputDecoration(
+                labelText: 'Specify Other',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {},
+            ),
+          )
+              : Container();
+        }),
       ],
     );
   }
@@ -345,6 +361,7 @@ class ScreenModuleIntelligence extends StatelessWidget {
           Map<String, dynamic> moduleData = {
             "location": controller.address.value,
             "assetType": controller.selectedAsset.value.text,
+            "othersDetails": controller.othersController.value.text,
             "companyAsset": controller.selectedRetailerDetails.value.join(', '),
             "visitDate": dateTime.toIso8601String(),
             "images": controller.images.value,

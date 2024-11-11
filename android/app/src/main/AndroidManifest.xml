@@ -16,8 +16,7 @@
 
     <application
         android:label="Jazz"
-        android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:name="${applicationName}">
 
         <!-- Google Maps API Key -->
         <meta-data

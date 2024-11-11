@@ -10,6 +10,7 @@ class User {
   String? userName;
   String? userAddress;
   String? imageUrl;
+  String? deviceToken;
   Map<String, dynamic>? linkedRetailers;
   List<Map<String, dynamic>> modules; // Property to hold module data
 
@@ -24,27 +25,29 @@ class User {
     this.mbu,
     this.userAddress,
     this.userName,
+    this.deviceToken,
     this.imageUrl,
     this.linkedRetailers,
     this.modules = const [], // Default to an empty list
   });
 
   // Factory method to create User from Firestore document snapshot
-  factory User.fromDocumentSnapshot(Map<String, dynamic> doc, List<Map<String, dynamic>> modules) {
+  factory User.fromDocumentSnapshot(Map<String, dynamic> doc) {
     return User(
-      userId: doc['userId'],
-      phoneNumber: doc['phoneNumber'],
-      fid: doc['fid'],
-      employeeId: doc['employeeId'],
-      email: doc['email'],
-      designation: doc['designation'],
-      region: doc['region'],
-      userAddress: doc['userAddress'],
-      userName: doc['userName'],
-      mbu: doc['mbu'],
-      imageUrl: doc.containsKey('imageUrl') ? doc['imageUrl'] : null,
+      userId: doc['userId'] as String?, // Cast to String?
+      phoneNumber: doc['phoneNumber'] as String?,
+      fid: doc['fid'] as String?,
+      employeeId: doc['employeeId'] as String?,
+      email: doc['email'] as String?,
+      designation: doc['designation'] as String?,
+      region: doc['region'] as String?,
+      userAddress: doc['userAddress'] as String?,
+      userName: doc['userName'] as String?,
+      deviceToken: doc['deviceToken'] as String?,
+      mbu: doc['mbu'] as String?,
+      imageUrl: doc.containsKey('imageUrl') ? doc['imageUrl'] as String? : null,
       linkedRetailers: doc['linkedRetailers'] != null ? Map<String, dynamic>.from(doc['linkedRetailers']) : null,
-      modules: modules, // Assign the modules fetched from Firestore
+      modules: [], // Assign an empty list if no modules are provided
     );
   }
 
@@ -61,9 +64,10 @@ class User {
       'userName': userName,
       'userAddress': userAddress,
       'mbu': mbu,
+      'deviceToken': deviceToken,
       'imageUrl': imageUrl,
       'linkedRetailers': linkedRetailers,
-      // Note: Handle modules if you want to store them back to Firestore
+      'modules': modules, // Add modules if needed
     };
   }
 }
