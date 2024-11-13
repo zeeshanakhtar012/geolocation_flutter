@@ -267,7 +267,7 @@ class ControllerAuthentication extends GetxController {
   }
 
   Future<void> logOutUserAutomatically() async {
-    await clearTextControllers(); // Clear all input fields before logout
+    await clearTextControllers();
     Get.snackbar(
         "Session Expired", "You have been logged out due to inactivity.",
         backgroundColor: Colors.red, colorText: Colors.black);
@@ -276,7 +276,8 @@ class ControllerAuthentication extends GetxController {
 
   @override
   void onClose() {
-    sessionTimer?.cancel(); // Cancel the timer when the controller is disposed
+    sessionTimer?.cancel();
+
     super.onClose();
   }
 
@@ -416,6 +417,48 @@ class ControllerAuthentication extends GetxController {
     selectedRetailerDetails.clear();
     update(); // Update the UI
   }
+  // Get modules Data
+  Future<void> fetchModuleData(String moduleName) async {
+    try {
+      // Retrieve userId from SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
+
+      if (userId != null) {
+        // Reference to the Firestore collection path
+        CollectionReference dataByDateCollection = _firestore
+            .collection('users')
+            .doc(userId)
+            .collection('modules')
+            .doc(moduleName)
+            .collection('dataByDate');
+
+        // Fetch all documents from the dataByDate collection
+        QuerySnapshot querySnapshot = await dataByDateCollection.get();
+
+        // Process and print each document's data
+        for (var doc in querySnapshot.docs) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          log("Document ID: ${doc.id}, Data: $data");
+
+          // Optionally, process each document's data here
+          // For example, store it in a list, display it in the UI, etc.
+        }
+
+        Get.snackbar("Success", "Module data fetched successfully!",
+            backgroundColor: Colors.green);
+      } else {
+        Get.snackbar("Error", "User ID not found. Please log in again.",
+            backgroundColor: Colors.red);
+      }
+    } catch (error) {
+      log("Failed to fetch module data: $error");
+      Get.snackbar("Error", "Failed to fetch module data.",
+          backgroundColor: Colors.red);
+    }
+  }
+// upload modules Data
+
   Future<void> uploadModuleData(
       String moduleName, Map<String, dynamic> moduleData) async {
     try {
@@ -437,8 +480,6 @@ class ControllerAuthentication extends GetxController {
             .collection('dataByDate')
             .doc(documentId)
             .set(moduleData);
-
-        Get.back();
         log("$moduleName data uploaded with unique timestamp!");
         Get.snackbar("Success", "$moduleName data uploaded successfully!",
             backgroundColor: Colors.green);
@@ -450,16 +491,17 @@ class ControllerAuthentication extends GetxController {
       log("Failed to upload module data: $error");
       Get.snackbar("Error", "Failed to upload module data.",
           backgroundColor: Colors.red);
+      await clearTextControllers();
     }
   }
 
   // retailers details
   Future<void> searchRetailersByPosId(String posId) async {
     try {
-      isLoading(true); // Show loading indicator
+      isLoading(true);
       QuerySnapshot querySnapshot = await _firestore
           .collection('retailers')
-          .where('posId', isEqualTo: posId) // Search by POS ID
+          .where('posId', isEqualTo: posId)
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
@@ -476,7 +518,8 @@ class ControllerAuthentication extends GetxController {
       Get.snackbar('Error', 'Failed to search retailers: $e',
           snackPosition: SnackPosition.BOTTOM);
     } finally {
-      isLoading(false); // Hide loading indicator
+      isLoading(false);
+      await clearTextControllers();
     }
   }
 
@@ -489,7 +532,6 @@ class ControllerAuthentication extends GetxController {
   void goToScreenModule() {
     Get.to(() => ScreenModule());
   }
-
   // logout
   Future<void> logOutUser() async {
     isLoading(true); // Show loading indicator
@@ -545,5 +587,4 @@ class ControllerAuthentication extends GetxController {
           backgroundColor: Colors.red);
     }
   }
-
 }
