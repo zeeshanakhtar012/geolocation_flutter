@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:Jazz/controllers/controller_add_data.dart';
 import 'package:Jazz/screens/screen_sign_in.dart';
+import 'package:Jazz/screens/screen_module.dart'; // Import your ScreenModule
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +19,6 @@ void main() async {
 }
 
 class MyApp extends StatefulWidget {
-
   const MyApp({super.key});
 
   @override
@@ -24,18 +26,19 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  ControllerAuthentication controller = Get.put(ControllerAuthentication());
+
+  // Function to check for location permissions
   void _checkPermissions() async {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      // Request permission if it is not granted
       permission = await Geolocator.requestPermission();
     }
-
     if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
-      // Permission granted, navigate to the next screen
-      Get.offAll(ScreenLogin());
+      // If permission granted, check login status
+      _checkLoginStatus();
     } else {
-      // Permission denied, show a message or handle accordingly
+      // Handle permission denied
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -45,8 +48,6 @@ class _MyAppState extends State<MyApp> {
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
-                // Optionally, exit the app
-                // SystemNavigator.pop();
               },
               child: Text('OK'),
             ),
@@ -55,13 +56,43 @@ class _MyAppState extends State<MyApp> {
       );
     }
   }
+
+  // Function to check login status and handle session timeout
+  void _checkLoginStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? userId = prefs.getString('userId');
+    int? loginTime = prefs.getInt('loginTime'); // Get login timestamp
+
+    if (userId != null && userId.isNotEmpty) {
+      // If user is logged in, check if 1 hour has passed
+      if (loginTime != null && DateTime.now().millisecondsSinceEpoch - loginTime > Duration(hours: 1).inMilliseconds) {
+        // Log out after 1 hour
+        _logout();
+      } else {
+        // If still within 1 hour, navigate to ScreenModule
+        Get.offAll(ScreenModule());
+        // Set a timer to log out after 1 hour
+        Timer(Duration(hours: 1), _logout);
+      }
+    } else {
+      // If user is not logged in, navigate to ScreenLogin
+      Get.offAll(ScreenLogin());
+    }
+  }
+
+  // Logout function
+  void _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('userId'); // Remove user ID
+    await prefs.remove('loginTime'); // Remove login timestamp
+    Get.offAll(ScreenLogin()); // Navigate to login screen
+  }
+
   @override
   void initState() {
     super.initState();
-    // checkNotificationPermission();
-    _checkPermissions();
+    _checkPermissions(); // Check permissions when app starts
   }
-
 
   late StreamSubscription _sub;
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -70,27 +101,14 @@ class _MyAppState extends State<MyApp> {
     'High Importance Notifications', // title
     description: 'This channel is used for important notifications.',
     importance: Importance.max,
-    // sound: RawResourceAndroidNotificationSound('notification'),
     enableLights: true,
     enableVibration: true,
     playSound: true,
     sound: RawResourceAndroidNotificationSound('ringtone.mp3'),
     ledColor: const Color.fromARGB(255, 255, 0, 0),
     audioAttributesUsage: AudioAttributesUsage.notificationRingtone,
-    // custom ringtone
-
   );
 
-
-// Function to check permissions for notifications
-//   void checkNotificationPermission() async {
-//     var settings = await FirebaseMessaging.instance.requestPermission();
-//     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-//       initNotificationChannel();
-//     }
-//   }
-
-// Initialize notification channel for Android/iOS
   void initNotificationChannel() async {
     const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
     const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings();
@@ -105,16 +123,6 @@ class _MyAppState extends State<MyApp> {
       onDidReceiveNotificationResponse: (NotificationResponse notificationResponse) async {
         String? payload = notificationResponse.payload;
         log("Pay $payload");
-        // var data=
-        // if (payload != null) {
-        //   if (data['type'] == 'call') {
-        //     log("Now calling");
-        //     handleNotificationAction(data);
-        //   }
-        //   else{
-        //     showCallNotification(message.notification!, data);
-        //   }
-        // }
       },
     );
   }
@@ -139,7 +147,9 @@ class _MyAppState extends State<MyApp> {
             primarySwatch: Colors.blue,
             textTheme: Typography.englishLike2018.apply(fontSizeFactor: 1.sp),
           ),
-          home: ScreenLogin(),
+          home: Scaffold(
+            body: Center(child: CircularProgressIndicator()), // Show a loading indicator while checking login status
+          ),
         );
       },
     );

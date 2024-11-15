@@ -263,7 +263,7 @@ class ScreenNewAssetDeployment extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Type of Asset",
+          "Company Asset",
           style: TextStyle(
             color: Colors.black,
             fontSize: 16.sp,

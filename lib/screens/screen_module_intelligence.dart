@@ -164,7 +164,7 @@ class ScreenModuleIntelligence extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Type of Asset",
+          "Company Asset",
           style: TextStyle(
             color: Colors.black,
             fontSize: 16.sp,
@@ -214,25 +214,18 @@ class ScreenModuleIntelligence extends StatelessWidget {
         GetBuilder<ControllerAuthentication>(
           builder: (_) {
             return MyInputField(
-              controller: TextEditingController(text: controller.selectedRetailerDetails.join(', ')),
+              controller: TextEditingController(text: controller.chooseOne.value),
               padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
               readOnly: true,
               textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
-              hint: controller.selectedRetailerDetails.isNotEmpty
-                  ? controller.selectedRetailerDetails.join(', ')
+              hint: controller.chooseOne.isNotEmpty
+                  ? controller.chooseOne.value
                   : "Company Asset",
               suffix: PopupMenuButton<String>(
                 icon: Icon(Icons.keyboard_arrow_down_sharp, color: Colors.white),
                 onSelected: (String selected) {
-                  if (selected == "Others (Specify)") {
-                    controller.showOthersInput.value = true;
-                  } else {
-                    controller.showOthersInput.value = false;
-                    if (!controller.selectedRetailerDetails.contains(selected)) {
-                      controller.selectedRetailerDetails.add(selected);
-                    }
-                  }
-                  controller.update(); // Trigger UI update
+                  // Set the selected value
+                  controller.chooseOneOption(selected);
                 },
                 itemBuilder: (BuildContext context) {
                   return controller.retailerDetails.map((String choice) {
@@ -240,24 +233,6 @@ class ScreenModuleIntelligence extends StatelessWidget {
                       value: choice,
                       child: Row(
                         children: [
-                          Obx(() => Checkbox(
-                            value: controller.selectedRetailerDetails.contains(choice),
-                            onChanged: (bool? value) {
-                              if (value == true) {
-                                controller.selectedRetailerDetails.add(choice);
-                                if (choice == "Others (Specify)") {
-                                  controller.showOthersInput.value = true;
-                                }
-                              } else {
-                                controller.selectedRetailerDetails.remove(choice);
-                                if (choice == "Others (Specify)") {
-                                  controller.showOthersInput.value = false;
-                                  controller.othersController.value;
-                                }
-                              }
-                              controller.update();
-                            },
-                          )),
                           Text(choice),
                         ],
                       ),

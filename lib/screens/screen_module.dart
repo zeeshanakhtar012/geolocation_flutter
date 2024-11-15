@@ -47,21 +47,21 @@ class ScreenModule extends StatelessWidget {
             }),
           ],
         ),
-        actions: [
-          Obx(() {
-            final minutes = ((controller.timeRemaining.value % 3600) ~/ 60)
-                .toString()
-                .padLeft(2, '0');
-            final seconds = (controller.timeRemaining.value % 60)
-                .toString()
-                .padLeft(2, '0');
-            return Text(
-              '$minutes:$seconds',
-              style: TextStyle(color: Colors.red),
-            );
-          }),
-          SizedBox(width: 10),
-        ],
+        // actions: [
+        //   Obx(() {
+        //     final minutes = ((controller.timeRemaining.value % 3600) ~/ 60)
+        //         .toString()
+        //         .padLeft(2, '0');
+        //     final seconds = (controller.timeRemaining.value % 60)
+        //         .toString()
+        //         .padLeft(2, '0');
+        //     return Text(
+        //       '$minutes:$seconds',
+        //       style: TextStyle(color: Colors.red),
+        //     );
+        //   }),
+        //   SizedBox(width: 10),
+        // ],
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -54,6 +54,7 @@ class ControllerAuthentication extends GetxController {
   int attemptCount = 0;
   final int maxAttempts = 5;
 
+  /// Check if user is already logged in
   Future<void> verifyPhoneNumber() async {
     isLoading.value = true;
 
@@ -79,8 +80,7 @@ class ControllerAuthentication extends GetxController {
         // Use `data()` method to get the document data
         var userData = result.docs.first.data();
         String? savedDeviceToken =
-            userData['deviceToken']; // Use String? to handle nullable
-
+            userData['deviceToken'];
         String currentDeviceToken = await getCurrentDeviceToken();
 
         if (savedDeviceToken != null &&
@@ -89,6 +89,7 @@ class ControllerAuthentication extends GetxController {
           Get.snackbar("Error",
               "This phone number is already logged in on another device.",
               backgroundColor: Colors.red);
+          log("${savedDeviceToken.toString()}");
           return;
         }
       }
@@ -146,7 +147,6 @@ class ControllerAuthentication extends GetxController {
 
     return deviceToken;
   }
-
   //
   Future<void> deleteOtpFromFirestore() async {
     try {
@@ -249,23 +249,22 @@ class ControllerAuthentication extends GetxController {
       log('Error updating device token: $e');
     }
   }
-
   // Call this method when the user logs in
   void startSessionTimer() {
     timeRemaining.value =
-        sessionTimeoutDuration; // Set the initial time remaining
-    sessionTimer?.cancel(); // Cancel any existing timer
+        sessionTimeoutDuration;
+    sessionTimer?.cancel();
 
     sessionTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (timeRemaining.value > 0) {
-        timeRemaining.value--; // Decrement the time remaining
+        timeRemaining.value--;
       } else {
         timer.cancel();
         logOutUserAutomatically();
       }
     });
   }
-
+  // Logout user automatically
   Future<void> logOutUserAutomatically() async {
     await clearTextControllers();
     Get.snackbar(
@@ -330,6 +329,7 @@ class ControllerAuthentication extends GetxController {
   }
 
   var selectedRetailerDetails = <String>[].obs;
+  var chooseOne = ''.obs;
   final List<String> retailerDetails = [
     'Facia',
     'Wall paint',
@@ -365,6 +365,26 @@ class ControllerAuthentication extends GetxController {
     }
     update();
   }
+  void chooseOneOption(String value) {
+    // Directly update the chooseOne to the selected value
+    chooseOne.value = value;
+
+    // If "Others (Specify)" is selected, show the input field, else hide it
+    if (value == "Others (Specify)") {
+      showOthersInput.value = true;
+    } else {
+      showOthersInput.value = false;
+    }
+
+    // Clear the "Others" input field if something other than "Others (Specify)" is selected
+    if (value != "Others (Specify)") {
+      othersController.value.clear();
+    }
+
+    // Trigger UI update
+    update();
+  }
+
 
   /// Pick and Upload Image
   Future<void> pickAndUploadImage() async {
@@ -494,7 +514,6 @@ class ControllerAuthentication extends GetxController {
       await clearTextControllers();
     }
   }
-
   // retailers details
   Future<void> searchRetailersByPosId(String posId) async {
     try {
