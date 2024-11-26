@@ -207,7 +207,11 @@ class ScreenMarketVisitLog extends StatelessWidget {
           log("retailer address == $retailerAddress");
           log("retailer name == $retailerName");
           log("location == $location");
-
+          Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+          double latitude = position.latitude;
+          double longitude = position.longitude;
+          log("Latitude: $latitude, Longitude: $longitude");
           // Check if the retailer fields are not empty before uploading
           if (retailerName.isNotEmpty && retailerAddress.isNotEmpty) {
             String moduleName = "MarketVisit";
@@ -217,6 +221,8 @@ class ScreenMarketVisitLog extends StatelessWidget {
               "retailerAddress": retailerAddress,
               "visitDate": dateTime.toIso8601String(),
               "images": controller.images.value,
+              "latitude": latitude,
+              "longitude": longitude,
               "time": dateTime,
             };
 

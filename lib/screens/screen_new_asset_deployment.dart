@@ -353,6 +353,11 @@ class ScreenNewAssetDeployment extends StatelessWidget {
           log("retailer address == $retailerAddress");
           log("retailer name == $retailerName");
           log("location == $location");
+          Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+          double latitude = position.latitude;
+          double longitude = position.longitude;
+          log("Latitude: $latitude, Longitude: $longitude");
 
           // Check if both retailerName and retailerAddress are not empty
           if (retailerName.isNotEmpty && retailerAddress.isNotEmpty) {
@@ -363,6 +368,8 @@ class ScreenNewAssetDeployment extends StatelessWidget {
               "assetType": controller.selectedAsset.value.text,
               "visitDate": dateTime.toIso8601String(),
               "images": controller.images.value,
+              "latitude": latitude,
+              "longitude": longitude,
               "time": dateTime,
             };
 

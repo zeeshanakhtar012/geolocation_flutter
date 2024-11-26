@@ -241,6 +241,11 @@ class ScreenNewTradeAsset extends StatelessWidget {
           log("retailer address == $retailerAddress");
           log("retailer name == $retailerName");
           log("location == $location");
+          Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+          double latitude = position.latitude;
+          double longitude = position.longitude;
+          log("Latitude: $latitude, Longitude: $longitude");
 
           // Only upload data if retailerName, retailerAddress, and location are not empty
           if (retailerName.isNotEmpty && retailerAddress.isNotEmpty && location.isNotEmpty) {
@@ -252,6 +257,8 @@ class ScreenNewTradeAsset extends StatelessWidget {
               "assetType": controller.selectedAsset.value.text,
               "visitDate": dateTime.toIso8601String(),
               "images": controller.images.value,
+              "latitude": latitude,
+              "longitude": longitude,
               "time": dateTime,
             };
 

@@ -332,6 +332,12 @@ class ScreenModuleIntelligence extends StatelessWidget {
           // }
 
           var dateTime = DateTime.now();
+          // Fetch current location
+          Position position = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+          double latitude = position.latitude;
+          double longitude = position.longitude;
+          log("Latitude: $latitude, Longitude: $longitude");
           String moduleName = "MarketIntelligence";
           Map<String, dynamic> moduleData = {
             "location": controller.address.value,
@@ -340,6 +346,8 @@ class ScreenModuleIntelligence extends StatelessWidget {
             "companyAsset": controller.selectedRetailerDetails.value.join(', '),
             "visitDate": dateTime.toIso8601String(),
             "images": controller.images.value,
+            "latitude": latitude, // Add latitude
+            "longitude": longitude, // Add longitude
             "time": dateTime,
           };
           await controller.uploadModuleData(moduleName, moduleData);
