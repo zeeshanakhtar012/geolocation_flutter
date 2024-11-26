@@ -39,8 +39,11 @@ class ControllerAuthentication extends GetxController {
   var images = <String>[].obs;
   var isPresent = false.obs;
   var retailersList = <RetailerModel>[].obs;
-  RxInt timeRemaining = 3600.obs; // 1 hour in seconds
-  Rx<User?> user = Rx<User?>(null); // Make user reactive
+  RxString retailerNameHint = ''.obs;
+  RxString retailerAddressHint = ''.obs;
+
+  RxInt timeRemaining = 3600.obs;
+  Rx<User?> user = Rx<User?>(null);
 
   late Timer countdownTimer;
 
@@ -105,7 +108,63 @@ class ControllerAuthentication extends GetxController {
       isLoading.value = false;
     }
   }
+  // logout automatically
+  Future<void> logOutUserAutomatically() async {
+    await clearTextControllers();
+    Get.snackbar(
+        "Session Expired", "You have been logged out due to inactivity.",
+        backgroundColor: Colors.red, colorText: Colors.black);
+    Get.offAll(() => ScreenLogin()); // Redirect to login screen
+  }
+  // chekc phone number
+  Future<bool> checkIfPhoneNumberIsWhitelisted(
+      String phoneNo, String password) async {
+    if (phoneNo.isEmpty || password.isEmpty) {
+      log('Error: Phone number or password is empty.');
+      return false;
+    }
 
+    try {
+      var result = await _firestore
+          .collection('users')
+          .where('phoneNumber', isEqualTo: phoneNo)
+          .where('password', isEqualTo: password)
+          .limit(1)
+          .get();
+
+      if (result.docs.isNotEmpty) {
+        String userId =
+            result.docs.first.id; // Get user ID from the document ID
+        await saveUserId(userId);
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      log('Error checking phone number: $e');
+      return false;
+    }
+  }
+  // get current user token
+  Future<String> getCurrentDeviceToken() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? deviceToken = prefs.getString('deviceToken');
+
+    try {
+      if (deviceToken == null || deviceToken.isEmpty) {
+        deviceToken = await FirebaseMessaging.instance.getToken();
+        if (deviceToken == null || deviceToken.isEmpty) {
+          throw Exception("Device token is null or empty");
+        }
+        await prefs.setString('deviceToken', deviceToken);
+      }
+    } catch (e) {
+      log("Error retrieving device token: $e");
+      rethrow; // Ensure the calling method is aware of this failure
+    }
+
+    return deviceToken;
+  }
   // verify otp
   Future<void> verifyOtp(String enteredOtp) async {
     try {
@@ -131,21 +190,6 @@ class ControllerAuthentication extends GetxController {
       log('Error verifying OTP: $e');
       Get.snackbar("Error", "Failed to verify OTP.", backgroundColor: Colors.red);
     }
-  }
-  // get current user token
-  Future<String> getCurrentDeviceToken() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? deviceToken = prefs.getString('deviceToken');
-
-    if (deviceToken == null) {
-      deviceToken = await FirebaseMessaging.instance.getToken() ?? '';
-      await prefs.setString('deviceToken', deviceToken);
-    }
-    if (deviceToken.isEmpty) {
-      throw Exception("Failed to retrieve device token");
-    }
-
-    return deviceToken;
   }
   //
   Future<void> deleteOtpFromFirestore() async {
@@ -258,6 +302,7 @@ class ControllerAuthentication extends GetxController {
     sessionTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (timeRemaining.value > 0) {
         timeRemaining.value--;
+        log("Time remaining: ${timeRemaining.value} seconds");
       } else {
         timer.cancel();
         logOutUserAutomatically();
@@ -265,56 +310,25 @@ class ControllerAuthentication extends GetxController {
     });
   }
   // Logout user automatically
-  Future<void> logOutUserAutomatically() async {
-    await clearTextControllers();
-    Get.snackbar(
-        "Session Expired", "You have been logged out due to inactivity.",
-        backgroundColor: Colors.red, colorText: Colors.black);
-    Get.offAll(() => ScreenLogin()); // Redirect to login screen
-  }
-
   @override
   void onClose() {
-    sessionTimer?.cancel();
-
+    // sessionTimer?.cancel();
+    startSessionTimer();
     super.onClose();
   }
-
-  Future<bool> checkIfPhoneNumberIsWhitelisted(
-      String phoneNo, String password) async {
-    if (phoneNo.isEmpty || password.isEmpty) {
-      log('Error: Phone number or password is empty.');
-      return false;
-    }
-
-    try {
-      var result = await _firestore
-          .collection('users')
-          .where('phoneNumber', isEqualTo: phoneNo)
-          .where('password', isEqualTo: password)
-          .limit(1)
-          .get();
-
-      if (result.docs.isNotEmpty) {
-        String userId =
-            result.docs.first.id; // Get user ID from the document ID
-        await saveUserId(userId); // Save user ID in SharedPreferences
-        return true;
-      } else {
-        return false;
-      }
-    } catch (e) {
-      log('Error checking phone number: $e');
-      return false;
-    }
-  }
-
   // Save user ID in SharedPreferences
   Future<void> saveUserId(String userId) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('userId', userId);
     log('User ID saved: $userId');
   }
+  Future<String?> getUserId() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? userId = prefs.getString('userId');
+    log('Retrieved User ID: $userId');
+    return userId;
+  }
+
 
   void onSelected(String value) {
     selectedAsset.value.text = value;
@@ -524,43 +538,73 @@ class ControllerAuthentication extends GetxController {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        var retailerData =
-            querySnapshot.docs.first.data() as Map<String, dynamic>;
-        retailerName.value.text = retailerData['retailerName'] ?? '';
-        retailerAddress.value.text = retailerData['retailerAddress'] ?? '';
+        var retailerData = querySnapshot.docs.first.data() as Map<String, dynamic>;
+        retailerNameHint.value = retailerData['retailerName'] ?? 'No Name';
+        retailerAddressHint.value = retailerData['retailerAddress'] ?? 'No Address';
+        log('Retailer Name: ${retailerData['retailerName']}');
+        log('Retailer Address: ${retailerData['retailerAddress']}');
+
+        Get.snackbar(
+          'Success',
+          'Retailer details fetched successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+        );
       } else {
-        Get.snackbar('No Retailer Found', 'No retailer found with this POS ID',
-            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red);
+        retailerNameHint.value = '';
+        retailerAddressHint.value = '';
+        Get.snackbar(
+          'No Retailer Found',
+          'No retailer found with this POS ID',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+        );
       }
     } catch (e) {
       log("ERROR to fetch retailer $e");
-      Get.snackbar('Error', 'Failed to search retailers: $e',
-          snackPosition: SnackPosition.BOTTOM);
+      Get.snackbar(
+        'Error',
+        'Failed to search retailers: $e',
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } finally {
       isLoading(false);
       await clearTextControllers();
     }
   }
-
   /// Mark attendance
   void markAttendance(bool isPresentValue) {
     isPresent.value = isPresentValue;
   }
 
-  //screen navigation
-  void goToScreenModule() {
-    Get.to(() => ScreenModule());
-  }
-  // logout
+
   Future<void> logOutUser() async {
-    isLoading(true); // Show loading indicator
+    isLoading(true);
     try {
+      // Get the saved user ID from SharedPreferences
+      String? userId = await getUserId();
+
+      if (userId != null && userId.isNotEmpty) {
+        // Remove the device token from Firestore
+        await FirebaseFirestore.instance
+            .collection('users') // Adjust collection name to match your structure
+            .doc(userId)
+            .update({
+          'deviceToken': FieldValue.delete(), // Remove the device token field
+        })
+            .then((value) => log("Device token deleted successfully"))
+            .catchError((error) => log("Failed to delete device token: $error"));
+      }
+
       // Clear user-related data
       clearTextControllers();
-      // cancelSessionTimer();
+      sessionTimer?.cancel();
       await Future.delayed(Duration(seconds: 2));
+
+      // Navigate to login screen
       Get.offAll(() => ScreenLogin());
 
+      // Show success message
       Get.snackbar("Logged Out", "You have successfully logged out.",
           snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.green);
     } catch (e) {
@@ -571,6 +615,7 @@ class ControllerAuthentication extends GetxController {
       isLoading(false);
     }
   }
+
   Future<void> fetchUserDetails() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();

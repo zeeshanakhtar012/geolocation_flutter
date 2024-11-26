@@ -30,7 +30,7 @@ class ScreenModuleIntelligence extends StatelessWidget {
           },
           icon: Icon(
             Icons.arrow_back_ios,
-            color: Colors.white,
+            color: Colors.black,
           ),
         ),
         title: Text(

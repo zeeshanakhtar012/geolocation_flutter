@@ -36,7 +36,7 @@ class ScreenNewTradeAsset extends StatelessWidget {
             },
             icon: Icon(
               Icons.arrow_back_ios,
-              color: Colors.white,
+              color: Colors.black,
             )),
         title: Text(
           "New Asset Deployment",
@@ -131,42 +131,8 @@ class ScreenNewTradeAsset extends StatelessWidget {
                                 ),
                                 Column(
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        buildLabel("POSID"),
-                                        MyInputField(
-                                          controller: controller.posid.value,
-                                          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-                                          textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
-                                          hint: "POSID",
-                                        ),
-                                        SizedBox(height: 10.h),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            controller.searchRetailersByPosId(controller.posid.value.text);
-                                          },
-                                          child: Text('Search Retailer'),
-                                        ),
-                                        SizedBox(height: 10.h),
-                                        buildLabel("Retailer Name"),
-                                        MyInputField(
-                                          controller: controller.retailerName.value,
-                                          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-                                          textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
-                                          hint: controller.retailerName.value.text.isEmpty ? "Retailer Name" : controller.retailerName.value.text,
-                                        ),
-                                        SizedBox(height: 10.h),
-                                        buildLabel("Retailer Address"),
-                                        MyInputField(
-                                          controller: controller.retailerAddress.value,
-                                          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-                                          textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
-                                          hint: controller.retailerAddress.value.text.isEmpty ? "Retailer Address" : controller.retailerAddress.value.text,
-                                        ),
-                                        SizedBox(height: 10.h),
-                                      ],
-                                    ),
+                                    // retialer data
+                                    retailerDetails(),
                                     SizedBox(
                                       height: 10.w,
                                     ),
@@ -187,59 +153,8 @@ class ScreenNewTradeAsset extends StatelessWidget {
                                         bottom: 5.h,
                                       ),
                                     ),
-                                    Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        CustomImagePickerContainer(
-                                          onImagePicked:
-                                          controller.onImagePicked,
-                                        ),
-                                        SizedBox(
-                                          width: 10.w,
-                                        ),
-                                        CustomImagePickerContainer(
-                                          onImagePicked:
-                                          controller.onImagePicked,
-                                        ),
-                                        SizedBox(
-                                          width: 10.w,
-                                        ),
-                                        CustomImagePickerContainer(
-                                          onImagePicked:
-                                          controller.onImagePicked,
-                                        ),
-                                      ],
-                                    ).marginOnly(
-                                      top: 10.h,
-                                    ),
-                                    SizedBox(
-                                      height: 10.w,
-                                    ),
-                                    Row(
-                                      mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        CustomImagePickerContainer(
-                                          onImagePicked:
-                                          controller.onImagePicked,
-                                        ),
-                                        SizedBox(
-                                          width: 10.w,
-                                        ),
-                                        CustomImagePickerContainer(
-                                          onImagePicked:
-                                          controller.onImagePicked,
-                                        ),
-                                        SizedBox(
-                                          width: 10.w,
-                                        ),
-                                        CustomImagePickerContainer(
-                                          onImagePicked:
-                                          controller.onImagePicked,
-                                        ),
-                                      ],
-                                    ),
+                                    // images details
+                                    imagesDetails(),
                                     SizedBox(height: 10.h),
                                     buildUploadButton(),
                                   ],
@@ -310,22 +225,47 @@ class ScreenNewTradeAsset extends StatelessWidget {
         buttonText: "Upload Data",
         onTap: () async {
           controller.isLoading.value = true;
-          // for (String imagePath in controller.images) {
-          //   await controller.uploadImageToStorage(File(imagePath));
-          // }
 
           var dateTime = DateTime.now();
-          String moduleName = "TradeAsset";
-          Map<String, dynamic> moduleData = {
-            "location": controller.address.value,
-            "retailerName": controller.retailerName.value.text,
-            "retailerAddress": controller.retailerAddress.value.text,
-            "assetType": controller.selectedAsset.value.text,
-            "visitDate": dateTime.toIso8601String(),
-            "images": controller.images.value,
-            "time": dateTime,
-          };
-          await controller.uploadModuleData(moduleName, moduleData);
+          String retailerName = controller.retailerName.value.text;
+          String retailerAddress = controller.retailerAddress.value.text;
+          String location = controller.address.value;
+
+          // If the searchRetailersByPosId function fetched data, use that data
+          if (retailerName.isEmpty || retailerAddress.isEmpty) {
+            retailerName = controller.retailerNameHint.value;
+            retailerAddress = controller.retailerAddressHint.value;
+          }
+
+          // Log the values to check if they are correct
+          log("retailer address == $retailerAddress");
+          log("retailer name == $retailerName");
+          log("location == $location");
+
+          // Only upload data if retailerName, retailerAddress, and location are not empty
+          if (retailerName.isNotEmpty && retailerAddress.isNotEmpty && location.isNotEmpty) {
+            String moduleName = "TradeAsset";
+            Map<String, dynamic> moduleData = {
+              "location": location, // Ensure location is passed correctly
+              "retailerName": retailerName,
+              "retailerAddress": retailerAddress,
+              "assetType": controller.selectedAsset.value.text,
+              "visitDate": dateTime.toIso8601String(),
+              "images": controller.images.value,
+              "time": dateTime,
+            };
+
+            log("moduleData == $moduleData");
+
+            // Upload the data
+            await controller.uploadModuleData(moduleName, moduleData);
+          } else {
+            // Log or show an error message if any field is empty
+            log("Error: One or more fields are empty. Upload not completed.");
+            // You can also show a Snackbar or other UI feedback to notify the user
+          }
+
+          // Clear values after upload or error
           controller.retailerName.value.clear();
           controller.retailerAddress.value.clear();
           controller.selectedAsset.value.clear();
@@ -335,5 +275,114 @@ class ScreenNewTradeAsset extends StatelessWidget {
         },
       ).marginSymmetric(vertical: 8.h);
     });
+  }
+  Widget imagesDetails(){
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment:
+          MainAxisAlignment.spaceBetween,
+          children: [
+            CustomImagePickerContainer(
+              onImagePicked:
+              controller.onImagePicked,
+            ),
+            SizedBox(
+              width: 10.w,
+            ),
+            CustomImagePickerContainer(
+              onImagePicked:
+              controller.onImagePicked,
+            ),
+            SizedBox(
+              width: 10.w,
+            ),
+            CustomImagePickerContainer(
+              onImagePicked:
+              controller.onImagePicked,
+            ),
+          ],
+        ).marginOnly(
+          top: 10.h,
+        ),
+        SizedBox(
+          height: 10.w,
+        ),
+        Row(
+          mainAxisAlignment:
+          MainAxisAlignment.spaceBetween,
+          children: [
+            CustomImagePickerContainer(
+              onImagePicked:
+              controller.onImagePicked,
+            ),
+            SizedBox(
+              width: 10.w,
+            ),
+            CustomImagePickerContainer(
+              onImagePicked:
+              controller.onImagePicked,
+            ),
+            SizedBox(
+              width: 10.w,
+            ),
+            CustomImagePickerContainer(
+              onImagePicked:
+              controller.onImagePicked,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+  Widget retailerDetails(){
+    return  Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        buildLabel("POSID"),
+        MyInputField(
+          controller: controller.posid.value,
+          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+          textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
+          hint: "POSID",
+        ),
+        SizedBox(height: 10.h),
+        ElevatedButton(
+          onPressed: () {
+            controller.searchRetailersByPosId(controller.posid.value.text);
+          },
+          child: Text('Search Retailer'),
+        ),
+        SizedBox(height: 10.h),
+        buildLabel("Retailer Name"),
+        Obx(() => MyInputField(
+          controller: controller.retailerName.value,
+          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+          textStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+          hint: controller.retailerNameHint.value.isEmpty
+              ? "Retailer Name"
+              : controller.retailerNameHint.value,
+        )),
+        SizedBox(height: 10.h),
+        buildLabel("Retailer Address"),
+        Obx(() => MyInputField(
+          controller: controller.retailerAddress.value,
+          padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+          textStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+          hint: controller.retailerAddressHint.value.isEmpty
+              ? "Retailer Address"
+              : controller.retailerAddressHint.value,
+        )),
+        SizedBox(height: 10.h),
+      ],
+    );
   }
 }

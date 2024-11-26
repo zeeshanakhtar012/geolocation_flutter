@@ -31,7 +31,7 @@ class ScreenMarketVisitLog extends StatelessWidget {
           },
           icon: Icon(
             Icons.arrow_back_ios,
-            color: Colors.white,
+            color: Colors.black,
           ),
         ),
         title: Text(
@@ -136,8 +136,12 @@ class ScreenMarketVisitLog extends StatelessWidget {
         MyInputField(
           controller: controller.posid.value,
           padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-          textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
-          hint: "POSID",
+          textStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+          hint: "Enter POS ID",
         ),
         SizedBox(height: 10.h),
         ElevatedButton(
@@ -148,23 +152,91 @@ class ScreenMarketVisitLog extends StatelessWidget {
         ),
         SizedBox(height: 10.h),
         buildLabel("Retailer Name"),
-        MyInputField(
+        Obx(() => MyInputField(
           controller: controller.retailerName.value,
           padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-          textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
-          hint: controller.retailerName.value.text.isEmpty ? "Retailer Name" : controller.retailerName.value.text,
-        ),
+          textStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+          hint: controller.retailerNameHint.value.isEmpty
+              ? "Retailer Name"
+              : controller.retailerNameHint.value,
+        )),
         SizedBox(height: 10.h),
         buildLabel("Retailer Address"),
-        MyInputField(
+        Obx(() => MyInputField(
           controller: controller.retailerAddress.value,
           padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-          textStyle: TextStyle(color: Colors.white, fontSize: 16.sp, fontWeight: FontWeight.w500),
-          hint: controller.retailerAddress.value.text.isEmpty ? "Retailer Address" : controller.retailerAddress.value.text,
-        ),
+          textStyle: TextStyle(
+            color: Colors.white,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+          hint: controller.retailerAddressHint.value.isEmpty
+              ? "Retailer Address"
+              : controller.retailerAddressHint.value,
+        )),
         SizedBox(height: 10.h),
       ],
     );
+  }
+  Widget buildUploadButton() {
+    return Obx(() {
+      return CustomButton(
+        isLoading: controller.isLoading.value,
+        buttonColor: AppColors.buttonColor,
+        buttonText: "Upload Data",
+        onTap: () async {
+          controller.isLoading.value = true;
+
+          // Retrieving values from controller or the search function
+          String retailerName = controller.retailerName.value.text;
+          String retailerAddress = controller.retailerAddress.value.text;
+          String location = controller.address.value;
+          var dateTime = DateTime.now();
+
+          // If the searchRetailersByPosId function fetched data, use that data
+          if (retailerName.isEmpty || retailerAddress.isEmpty) {
+            retailerName = controller.retailerNameHint.value;
+            retailerAddress = controller.retailerAddressHint.value;
+          }
+
+          // Log the values to see if they are correct
+          log("retailer address == $retailerAddress");
+          log("retailer name == $retailerName");
+          log("location == $location");
+
+          // Check if the retailer fields are not empty before uploading
+          if (retailerName.isNotEmpty && retailerAddress.isNotEmpty) {
+            String moduleName = "MarketVisit";
+            Map<String, dynamic> moduleData = {
+              "location": location,
+              "retailerName": retailerName,
+              "retailerAddress": retailerAddress,
+              "visitDate": dateTime.toIso8601String(),
+              "images": controller.images.value,
+              "time": dateTime,
+            };
+
+            // Call the function to upload the data
+            await controller.uploadModuleData(moduleName, moduleData);
+
+            // Clear the fields after upload
+            controller.retailerName.value.clear();
+            controller.retailerAddress.value.clear();
+            controller.images.value = [];
+          } else {
+            log("Retailer Name or Address is empty.");
+            Get.snackbar("Error", "Please fill in both retailer name and address.",
+                backgroundColor: Colors.red);
+          }
+
+          controller.isLoading.value = false;
+        },
+      ).marginSymmetric(vertical: 8.h);
+    });
   }
 
   Widget buildLabel(String text) {
@@ -185,34 +257,5 @@ class ScreenMarketVisitLog extends StatelessWidget {
         }),
       ],
     );
-  }
-
-  Widget buildUploadButton() {
-    return Obx(() {
-      return CustomButton(
-        isLoading: controller.isLoading.value,
-        buttonColor: AppColors.buttonColor,
-        buttonText: "Upload Data",
-        onTap: () async {
-          controller.isLoading.value = true;
-
-          var dateTime = DateTime.now();
-          String moduleName = "MarketVisit";
-          Map<String, dynamic> moduleData = {
-            "location": controller.address.value,
-            "retailerName": controller.retailerName.value.text,
-            "retailerAddress": controller.retailerAddress.value.text,
-            "visitDate": dateTime.toIso8601String(),
-            "images": controller.images.value,
-            "time": dateTime,
-          };
-          await controller.uploadModuleData(moduleName, moduleData);
-          controller.retailerName.value.clear();
-          controller.retailerAddress.value.clear();
-          controller.images.value = [];
-          controller.isLoading.value = false;
-        },
-      ).marginSymmetric(vertical: 8.h);
-    });
   }
 }
