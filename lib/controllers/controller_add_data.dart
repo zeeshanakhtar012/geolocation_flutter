@@ -58,6 +58,7 @@ class ControllerAuthentication extends GetxController {
   final int maxAttempts = 5;
 
   /// Check if user is already logged in
+  // Inside your verifyPhoneNumber or login function
   Future<void> verifyPhoneNumber() async {
     isLoading.value = true;
 
@@ -66,13 +67,11 @@ class ControllerAuthentication extends GetxController {
           phoneNo.value.text, password.value.text);
 
       if (!isWhitelisted) {
-        Get.snackbar(
-            "Error", "Your phone number is not allowed to access this app.",
+        Get.snackbar("Error", "Your phone number is not allowed to access this app.",
             backgroundColor: Colors.red);
         return;
       }
 
-      // Check if the user is already logged in on another device
       var result = await _firestore
           .collection('users')
           .where('phoneNumber', isEqualTo: phoneNo.value.text)
@@ -80,24 +79,26 @@ class ControllerAuthentication extends GetxController {
           .get();
 
       if (result.docs.isNotEmpty) {
-        // Use `data()` method to get the document data
         var userData = result.docs.first.data();
-        String? savedDeviceToken =
-            userData['deviceToken'];
+        String? savedDeviceToken = userData['deviceToken'];
         String currentDeviceToken = await getCurrentDeviceToken();
 
         if (savedDeviceToken != null &&
             savedDeviceToken.isNotEmpty &&
             savedDeviceToken != currentDeviceToken) {
-          Get.snackbar("Error",
-              "This phone number is already logged in on another device.",
+          Get.snackbar("Error", "This phone number is already logged in on another device.",
               backgroundColor: Colors.red);
           log("${savedDeviceToken.toString()}");
           return;
         }
       }
 
-      // Proceed with OTP sending and verification as normal
+      // Save the login timestamp in SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('loginTimestamp', DateTime.now().millisecondsSinceEpoch);
+
+      startSessionTimer();
+
       String otp = await sendOtp();
       showOtpDialog(otp);
     } catch (e) {
@@ -109,13 +110,52 @@ class ControllerAuthentication extends GetxController {
     }
   }
   // logout automatically
+  void startSessionTimer() {
+    sessionTimer?.cancel();
+
+    sessionTimer = Timer(Duration(seconds: sessionTimeoutDuration), () {
+      logOutUserAutomatically();
+      logOutUser();
+    });
+  }
+
+  Future<void> checkSessionValidity() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? loginTimestamp = prefs.getInt('loginTimestamp');
+
+    if (loginTimestamp != null) {
+      int currentTime = DateTime.now().millisecondsSinceEpoch;
+      int elapsedTime = (currentTime - loginTimestamp) ~/ 1000;
+
+      if (elapsedTime >= sessionTimeoutDuration) {
+        logOutUserAutomatically();
+      } else {
+        // Session is still valid, calculate remaining time
+        int remainingTime = sessionTimeoutDuration - elapsedTime;
+        sessionTimer = Timer(Duration(seconds: remainingTime), () {
+          logOutUserAutomatically();
+        });
+      }
+    } else {
+      // No valid session found, redirect to login
+      Get.offAll(() => ScreenLogin());
+    }
+  }
+
   Future<void> logOutUserAutomatically() async {
-    await clearTextControllers();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('loginTimestamp'); // Remove the stored timestamp
+
     Get.snackbar(
-        "Session Expired", "You have been logged out due to inactivity.",
-        backgroundColor: Colors.red, colorText: Colors.black);
+      "Session Expired",
+      "You have been logged out due to inactivity.",
+      backgroundColor: Colors.red,
+      colorText: Colors.black,
+    );
+    await logOutUser();
     Get.offAll(() => ScreenLogin()); // Redirect to login screen
   }
+
   // chekc phone number
   Future<bool> checkIfPhoneNumberIsWhitelisted(
       String phoneNo, String password) async {
@@ -293,26 +333,17 @@ class ControllerAuthentication extends GetxController {
       log('Error updating device token: $e');
     }
   }
-  // Call this method when the user logs in
-  void startSessionTimer() {
-    timeRemaining.value =
-        sessionTimeoutDuration;
-    sessionTimer?.cancel();
-
-    sessionTimer = Timer.periodic(Duration(seconds: 1), (timer) {
-      if (timeRemaining.value > 0) {
-        timeRemaining.value--;
-        log("Time remaining: ${timeRemaining.value} seconds");
-      } else {
-        timer.cancel();
-        logOutUserAutomatically();
-      }
-    });
-  }
   // Logout user automatically
   @override
   void onClose() {
+    // Reset all variables to their default values
+    selectedRetailerDetails.clear();
+    chooseOne.value = ''; // Resetting to default
+    showOthersInput.value = false; // Resetting to default
+    othersController.value.clear(); // Clearing the TextEditingController
+    super.onClose();
     // sessionTimer?.cancel();
+    // clearTextControllers(); // Ensure all data is cleared
     startSessionTimer();
     super.onClose();
   }
@@ -329,6 +360,35 @@ class ControllerAuthentication extends GetxController {
     return userId;
   }
 
+  Future<void> clearTextControllers() async {
+    // Clear all TextEditingController values
+    phoneNo.value.clear();
+    posid.value.clear();
+    selectedAsset.value.clear();
+    retailerAddress.value.clear();
+    retailerName.value.clear();
+    assetCamp.value.clear();
+    fid.value.clear();
+    selectedRetailerDetail.value.clear();
+    otp.value.clear();
+    password.value.clear();
+    othersController.value.clear();
+
+    // Clear observable variables and lists
+    phoneAuthError.value = '';
+    address.value = '';
+    retailerNameHint.value = '';
+    retailerAddressHint.value = '';
+    images.clear();
+    retailersList.clear();
+
+    // Reset booleans and other observables
+    showOthersInput.value = false;
+    isLoading.value = false;
+    isPresent.value = false;
+
+    update(); // Notify listeners about UI updates
+  }
 
   void onSelected(String value) {
     selectedAsset.value.text = value;
@@ -398,12 +458,10 @@ class ControllerAuthentication extends GetxController {
     // Trigger UI update
     update();
   }
-
-
   /// Pick and Upload Image
   Future<void> pickAndUploadImage() async {
-    if (images.length >= 6) {
-      Get.snackbar("Limit Reached", "You can only upload 6 images.",
+    if (images.length < 6) {
+      Get.snackbar("Error", "You have to upload 6 images!",
           backgroundColor: Colors.red);
       return;
     }
@@ -434,23 +492,6 @@ class ControllerAuthentication extends GetxController {
   }
 
   /// Clear all input fields
-  // Clear all input fields
-  Future<void> clearTextControllers() async {
-    // Clear all controllers and lists
-    phoneNo.value.clear();
-    posid.value.clear();
-    selectedAsset.value.clear();
-    retailerAddress.value.clear();
-    retailerName.value.clear();
-    assetCamp.value.clear();
-    fid.value.clear();
-    selectedRetailerDetail.value.clear();
-    otp.value.clear();
-    password.value.clear();
-    images.clear();
-    selectedRetailerDetails.clear();
-    update(); // Update the UI
-  }
   // Get modules Data
   Future<void> fetchModuleData(String moduleName) async {
     try {
@@ -517,6 +558,7 @@ class ControllerAuthentication extends GetxController {
         log("$moduleName data uploaded with unique timestamp!");
         Get.snackbar("Success", "$moduleName data uploaded successfully!",
             backgroundColor: Colors.green);
+        Get.offAll(ScreenModule());
       } else {
         Get.snackbar("Error", "User ID not found. Please log in again.",
             backgroundColor: Colors.red);
@@ -525,7 +567,7 @@ class ControllerAuthentication extends GetxController {
       log("Failed to upload module data: $error");
       Get.snackbar("Error", "Failed to upload module data.",
           backgroundColor: Colors.red);
-      await clearTextControllers();
+      // await clearTextControllers();
     }
   }
   // retailers details
@@ -569,7 +611,7 @@ class ControllerAuthentication extends GetxController {
       );
     } finally {
       isLoading(false);
-      await clearTextControllers();
+      // await clearTextControllers();
     }
   }
   /// Mark attendance
@@ -597,7 +639,7 @@ class ControllerAuthentication extends GetxController {
       }
 
       // Clear user-related data
-      clearTextControllers();
+      // clearTextControllers();
       sessionTimer?.cancel();
       await Future.delayed(Duration(seconds: 2));
 

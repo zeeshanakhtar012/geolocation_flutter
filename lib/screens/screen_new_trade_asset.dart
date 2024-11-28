@@ -271,10 +271,6 @@ class ScreenNewTradeAsset extends StatelessWidget {
             log("Error: One or more fields are empty. Upload not completed.");
             // You can also show a Snackbar or other UI feedback to notify the user
           }
-
-          // Clear values after upload or error
-          controller.retailerName.value.clear();
-          controller.retailerAddress.value.clear();
           controller.selectedAsset.value.clear();
           controller.selectedRetailerDetails.value.clear();
           controller.images.value = [];
