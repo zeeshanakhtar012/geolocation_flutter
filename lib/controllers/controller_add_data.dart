@@ -153,7 +153,6 @@ class ControllerAuthentication extends GetxController {
       colorText: Colors.black,
     );
     await logOutUser();
-    Get.offAll(() => ScreenLogin()); // Redirect to login screen
   }
 
   // chekc phone number

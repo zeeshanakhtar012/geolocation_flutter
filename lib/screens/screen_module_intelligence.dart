@@ -14,9 +14,16 @@ import '../utils/location_utils.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_image_picker_container.dart';
 
-class ScreenModuleIntelligence extends StatelessWidget {
+class ScreenModuleIntelligence extends StatefulWidget {
+  @override
+  State<ScreenModuleIntelligence> createState() => _ScreenModuleIntelligenceState();
+}
+
+class _ScreenModuleIntelligenceState extends State<ScreenModuleIntelligence> {
   User? user;
+
   Completer<GoogleMapController> _controller = Completer();
+
   ControllerAuthentication controller = Get.put(ControllerAuthentication());
 
   @override
@@ -327,10 +334,11 @@ class ScreenModuleIntelligence extends StatelessWidget {
         buttonText: "Upload Data",
         onTap: () async {
           controller.isLoading.value = true;
+
           // for (String imagePath in controller.images) {
           //   await controller.uploadImageToStorage(File(imagePath));
           // }
-
+          setState(() {});
           var dateTime = DateTime.now();
           // Fetch current location
           Position position = await Geolocator.getCurrentPosition(
